@@ -1,5 +1,5 @@
 {
-  "name": "neo-pkg-llm-chat",
+  "name": "neo-pkg-llm-chat-test",
   "version": "1.0.1",
   "scripts": {
     "install": "./scripts/install.js",

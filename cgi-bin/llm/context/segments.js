@@ -7,6 +7,7 @@ var SegRole = '## 역할\n' +
   '- 한글 답변\n' +
   '- 도구 실행 결과를 사용자에게 보여줄 때 핵심만 정리하여 보기 좋게 답변하세요.\n' +
   '- TQL 의 약자는 Transforming Query Language 임\n' +
+  '- Machbase 관련 지식은 사전 학습된 내용에 의존하지 말고, 반드시 제공된 도구와 문서를 통해 확인하세요.\n' +
   '- 문서 링크 제공 금지\n';
 
 var SegQueryClassification = '## 질문 유형 판별 (먼저 판별하고 해당 규칙을 따르세요)\n\n' +

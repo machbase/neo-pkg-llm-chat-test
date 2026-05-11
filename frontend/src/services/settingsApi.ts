@@ -2,15 +2,14 @@ import type { AppConfig, ApiResponse } from "../types/settings";
 import { defaultConfig } from "../types/settings";
 import { getApiBase } from "./baseUrl";
 
-const CGI_BASE = "/public/neo-pkg-llm-chat/cgi-bin";
-
 // ── Service restart (stop → start) ──
 async function restartService(): Promise<void> {
+    const API_BASE = await getApiBase();
     try {
-        await fetch(`${CGI_BASE}/stop`, { method: "POST" });
+        await fetch(`${API_BASE}/stop`, { method: "POST" });
     } catch { /* ignore stop errors */ }
     await new Promise((r) => setTimeout(r, 500));
-    await fetch(`${CGI_BASE}/start`, { method: "POST" });
+    await fetch(`${API_BASE}/start`, { method: "POST" });
 }
 
 // ── Config list ──

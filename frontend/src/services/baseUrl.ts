@@ -1,44 +1,24 @@
-interface InfoResponse {
-    ok: boolean;
-    data?: { port: string };
-    reason?: string;
+// LLM 서버 base URL (8884 포트)
+function detectLlmBase(): string {
+    // 이미 LLM 서버(8884)에서 서빙 중이면 현재 origin 사용
+    if (window.location.port && window.location.port !== "5654") {
+        return "";
+    }
+    // machbase-neo(5654)에서 열린 경우 → LLM 서버 포트로 연결
+    return `${window.location.protocol}//${window.location.hostname}:8884`;
 }
 
-let cachedPort: Promise<string> | null = null;
+const LLM_BASE = detectLlmBase();
 
-// CGI 엔드포인트 — config API용
-const CGI_PREFIX = "/public/neo-pkg-llm-chat/cgi-bin/api";
-
-// Config API는 Neo CGI를 직접 사용
+// Config API는 LLM 서버의 /api 사용
 export const getApiBase = async (): Promise<string> => {
-    return CGI_PREFIX;
+    return `${LLM_BASE}/api`;
 };
 
-// LLM 서버 포트 조회 (WS 연결용)
-export const getLlmPort = (): Promise<string> => {
-    if (cachedPort) return cachedPort;
-    const url = `${CGI_PREFIX}/info`;
-    cachedPort = fetch(url)
-        .then((res) => {
-            if (!res.ok) throw new Error(`info.js HTTP ${res.status}`);
-            return res.json() as Promise<InfoResponse>;
-        })
-        .then((body) => {
-            if (!body.ok || !body.data?.port) {
-                throw new Error(body.reason || "info.js returned no port");
-            }
-            return body.data.port;
-        })
-        .catch((err) => {
-            cachedPort = null;
-            throw err;
-        });
-    return cachedPort;
-};
-
-// WebSocket은 LLM 서버 포트로 연결
+// WebSocket은 LLM 서버로 연결
 export const getWsBase = async (): Promise<string> => {
-    const port = await getLlmPort();
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${protocol}://${window.location.hostname}:${port}`;
+    const host = window.location.hostname;
+    const port = LLM_BASE ? "8884" : window.location.port;
+    return `${protocol}://${host}:${port}`;
 };

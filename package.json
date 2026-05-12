@@ -4,6 +4,7 @@
   "scripts": {
     "start": "./scripts/start.js",
     "stop": "./scripts/stop.js",
+    "install": "./scripts/install.js",
     "uninstall": "./scripts/uninstall.js"
   },
   "dependencies": {}

@@ -116,6 +116,7 @@
 | dbms/table-types/tag-tables/table-types-tag-tables-lsl-usl-limits.md | LSL/USL 데이터품질 | LSL,USL,specification_limit,범위제한 |
 | dbms/table-types/tag-tables/table-types-tag-tables-querying-data.md | 태그 데이터 조회 | 시계열쿼리,시간범위,tag_id검색,고속검색 |
 | dbms/table-types/tag-tables/table-types-tag-tables-rollup-conditional.md | 조건부 롤업 | conditional-rollup,outlier_filtering,predicate,노이즈제거 |
+| dbms/table-types/tag-tables/table-types-tag-tables-rollup-custom.md | 사용자 정의 롤업 (Custom Rollup) | custom_rollup,user_defined_aggregation,INTO_AS_SELECT,re_aggregation,OHLCV,hierarchical_pipeline,DATE_BIN,FIRST_LAST |
 | dbms/table-types/tag-tables/table-types-tag-tables-rollup-tables.md | 롤업 테이블 | rollup-statistics,MIN-MAX-AVG,hourly-rollup,CREATE_ROLLUP |
 | dbms/table-types/tag-tables/table-types-tag-tables-tag-indexes.md | 태그 인덱스 | TAG_INDEX,3-level-index,json_path,추가컬럼인덱싱 |
 | dbms/table-types/tag-tables/table-types-tag-tables-tag-metadata.md | 태그 메타데이터 | _META-table,metadata-management,센서레지스트리 |
@@ -213,3 +214,11 @@
 | utilities/timeformat-tz.md | 시간 포맷 및 타임존 | RFC3339,Unix epoch,custom format,IANA timezone |
 | utilities/timer.md | 타이머 스케줄링 | CRON expression,@every,@daily,@hourly,auto-start |
 | utilities/timer-templates.md | 타이머 TQL 스크립트 패턴 | CSV pattern,FAKE source,SQL pattern,MAPVALUE,배치 INSERT |
+| report/general-report-templates.md | 범용 분석 리포트 템플릿 | HTML_report,시계열통계,태그별통계,AI분석,LLM생성 |
+| report/finance-report-templates.md | 금융 분석 리포트 템플릿 | OHLCV,캔들스틱,볼린저밴드,이동평균,거래량,주가환율 |
+| report/vibration-report-templates.md | 진동 분석 리포트 템플릿 | RMS,FFT,ISO_10816,Crest_Factor,가속도파형,진동분석 |
+| report/driving-report-templates.md | 운전행동 분석 리포트 템플릿 | IMU,안전점수,급가속급제동,자이로,Class분포,운전행동 |
+| sdk-go/machcli.md | Go CGo 네이티브 클라이언트 | machcli,CGo,C-library-wrapper,native-port-5656,NewDatabase,MaxOpenConn |
+| sdk-go/machrpc.md | Go gRPC 클라이언트 패키지 | machrpc,gRPC-client,TLS-certificate,client-cert,Appender,BulkInsert |
+| sdk-go/machgo.md | Go Pure 네이티브 클라이언트 | machgo,pure-Go,no-CGo,neo-client,native-port-5656,cross-platform |
+| sdk-go/sqldriver.md | Go 표준 sql 패키지 드라이버 | machbase-driver,go-database/sql,neo-client,DSN,sql.Open,native-TCP-5656 |

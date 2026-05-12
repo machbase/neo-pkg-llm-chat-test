@@ -29,7 +29,8 @@ type ExtWsOutgoing =
 
 const getExtWsUrl = async (): Promise<string> => {
     const base = await getWsBase();
-    return `${base}/ws`;
+    const userId = getCurrentUser() ?? "sys";
+    return `${base}/${userId}/ws`;
 };
 
 const generateSessionId = (): string => `sess-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -298,10 +299,7 @@ export const usePkgChat = (pInitialMessages?: Message[]) => {
     };
 
     const handleInterruptMessage = () => {
-        // Immediately stop UI processing (server may still be running but we ignore further responses)
-        setMessages((prev) => prev.map((m) => m.isProcess ? { ...m, isInterrupt: true, isProcess: false } : { ...m, isInterrupt: true }));
-        setProcessingAnswer(false);
-        processingAnswerRef.current = false;
+        setMessages((prev) => prev.map((m) => ({ ...m, isInterrupt: true })));
         sendExt({ type: "stop", user_id: getCurrentUser() ?? "", session_id: sessionIdRef.current });
     };
 

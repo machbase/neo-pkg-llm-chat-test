@@ -1,54 +1,33 @@
 var fs = require('fs');
 var path = require('path');
 
-var reportTmplDir = '';
-
-// Find report template directory
-(function init() {
-  var cwd = process.cwd();
-  var candidates = [
-    path.join(cwd, 'neo', 'report'),
-    path.join(cwd, '..', 'neo', 'report'),
-  ];
-  for (var i = 0; i < candidates.length; i++) {
-    try {
-      var stat = fs.statSync(candidates[i]);
-      if (stat.isDirectory()) {
-        reportTmplDir = candidates[i];
-        console.println('[ReportTemplates] Found dir: ' + reportTmplDir);
-        break;
-      }
-    } catch (e) { /* continue */ }
-  }
-})();
-
-var REPORT_TEMPLATE_RE = /(?:^|\n)###\s*(R-\d+)\.[^\n]*\n[\s\S]*?```html\n([\s\S]*?)\n```/g;
+var TEMPLATE_FILES = [
+  'general-report-templates.md',
+  'finance-report-templates.md',
+  'vibration-report-templates.md',
+  'driving-report-templates.md',
+];
 
 function loadReportTemplates() {
   var templates = {};
-  if (!reportTmplDir) {
-    console.println('[ReportTemplates] WARNING: report template directory not found');
-    return templates;
-  }
-  try {
-    var entries = fs.readdirSync(reportTmplDir);
-    for (var i = 0; i < entries.length; i++) {
-      if (!entries[i].endsWith('.md')) continue;
-      var data = fs.readFileSync(path.join(reportTmplDir, entries[i]), 'utf8');
-      var content = data.replace(/\r\n/g, '\n');
+  var baseDir = path.join(__dirname, '..', 'neo', 'report');
+  for (var i = 0; i < TEMPLATE_FILES.length; i++) {
+    var filePath = path.join(baseDir, TEMPLATE_FILES[i]);
+    try {
+      var data = fs.readFileSync(filePath, 'utf8');
+      var content = data.replace(/\r\n/g, '\n').replace(/^\uFEFF/, '');
+      var re = /(?:^|\n)###\s*(R-\d+)\.[^\n]*\n[\s\S]*?```html\n([\s\S]*?)\n```/g;
       var match;
-      REPORT_TEMPLATE_RE.lastIndex = 0;
-      while ((match = REPORT_TEMPLATE_RE.exec(content)) !== null) {
+      while ((match = re.exec(content)) !== null) {
         templates[match[1]] = match[2].trim();
+        console.println('[ReportTemplates] Parsed ' + match[1] + ' from ' + TEMPLATE_FILES[i]);
       }
+    } catch (e) {
+      console.println('[ReportTemplates] Skip ' + TEMPLATE_FILES[i] + ': ' + e.message);
     }
-  } catch (e) {
-    console.println('[ReportTemplates] Failed to read dir: ' + e.message);
   }
   var ids = Object.keys(templates);
-  if (ids.length > 0) {
-    console.println('[ReportTemplates] Loaded ' + ids.length + ' templates: ' + JSON.stringify(ids));
-  }
+  console.println('[ReportTemplates] Total loaded: ' + ids.length + ' [' + ids.join(', ') + '] baseDir=' + baseDir);
   return templates;
 }
 
@@ -62,7 +41,8 @@ function expandReportTemplate(templateID, params) {
     }
   }
   if (!code) {
-    throw new Error('Report template \'' + templateID + '\' not found. Available: ' + JSON.stringify(Object.keys(tmpl)));
+    var baseDir = path.join(__dirname, '..', 'neo', 'report');
+    throw new Error('report template \'' + templateID + '\' not found. available: ' + JSON.stringify(Object.keys(tmpl)) + ' [baseDir=' + baseDir + ']');
   }
   var keys = Object.keys(params);
   for (var i = 0; i < keys.length; i++) {

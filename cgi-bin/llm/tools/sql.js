@@ -7,7 +7,8 @@ function register(registry, mc) {
     description: 'List all TAG tables in Machbase Neo database.',
     parameters: { type: 'object', properties: {} },
     fn: function (args, cb) {
-      mc.querySQL("SELECT NAME FROM M$SYS_TABLES WHERE TYPE = 6 ORDER BY NAME", '', '', '', function (err, result) {
+      var owner = (mc.user || 'SYS').toUpperCase();
+      mc.querySQL("SELECT st.NAME FROM M$SYS_TABLES AS st JOIN M$SYS_USERS AS su ON st.USER_ID = su.USER_ID WHERE su.NAME = '" + owner + "' AND st.FLAG = 0 ORDER BY st.NAME", '', '', '', function (err, result) {
         if (err) return cb(null, 'Error: ' + err.message);
         try {
           var parsed = JSON.parse(result);
@@ -35,7 +36,7 @@ function register(registry, mc) {
     fn: function (args, cb) {
       var table = argStr(args, 'table_name', '');
       if (!table) return cb(null, 'Error: table_name is required');
-      mc.querySQL("SELECT DISTINCT NAME FROM " + table + " ORDER BY NAME", '', '', '', function (err, result) {
+      mc.querySQL("SELECT NAME FROM _" + table.toLowerCase() + "_meta", '', '', '', function (err, result) {
         if (err) return cb(null, 'Error: ' + err.message);
         try {
           var parsed = JSON.parse(result);

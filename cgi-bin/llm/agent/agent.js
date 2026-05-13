@@ -3,6 +3,11 @@ var { createBuilder, formatCatalog } = require('../context/builder');
 var { createRegistry: createSkillRegistry } = require('../skill/skill');
 var { createFixerContext, fix, fixDashboardTime, captureResults, validateTagInArgs } = require('../fixer/fixer');
 var { parseTimeRange, buildSkillHint, compactHistory, inferTableName } = require('./classifier');
+var { createPipeline } = require('../guard/guard');
+var ConsecutiveFailureGuard = require('../guard/consecutive_failure');
+var DashboardEarlyGuard = require('../guard/dashboard_early');
+var ChartOmissionGuard = require('../guard/chart_omission');
+var ReportOmissionGuard = require('../guard/report_omission');
 
 var MAX_STEPS = 60;
 
@@ -18,6 +23,10 @@ function createAgent(llmClient, registry) {
     advanced: false,
     reportMode: false,
     fixerCtx: createFixerContext(),
+    guard: createPipeline(
+      [ConsecutiveFailureGuard, DashboardEarlyGuard],
+      [ChartOmissionGuard, ReportOmissionGuard]
+    ),
   };
 
   // onProgress(text) — called for each tool step
@@ -175,8 +184,21 @@ function runLoop(agent, step, cb) {
     var msg = resp.message;
     msg = fix(msg, agent.fixerCtx);
 
-    // No tool calls → final answer
+    // Pre-tool guards (may re-prompt LLM and replace msg)
+    if (msg.toolCalls && msg.toolCalls.length > 0) {
+      msg = agent.guard.runPreTool(agent, msg);
+    }
+
+    // No tool calls → post-loop guards, then final answer
     if (!msg.toolCalls || msg.toolCalls.length === 0) {
+      msg = agent.guard.runPostLoop(agent, msg);
+      // Post-loop guard may have re-prompted and got tool calls back
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        agent.messages.push(msg);
+        return executeToolCalls(agent, msg.toolCalls, 0, step, function (newStep) {
+          runLoop(agent, newStep, cb);
+        });
+      }
       if (!msg.content) {
         console.println('[Agent] Empty response, retrying...');
         agent.messages.push(createMessage('user', '작업이 완료되지 않았습니다. 다음 단계를 계속 진행하세요.'));

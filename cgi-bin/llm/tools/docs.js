@@ -30,7 +30,7 @@ function register(registry, mc) {
       required: ['file_identifier'],
     },
     fn: function (args, cb) {
-      var filePath = argStr(args, 'file_identifier', '');
+      var filePath = cleanFilePath(argStr(args, 'file_identifier', ''));
       if (!filePath) return cb(null, 'Error: file_identifier is required');
       try {
         var neoDir = findNeoDir();
@@ -54,7 +54,7 @@ function register(registry, mc) {
       required: ['file_identifier'],
     },
     fn: function (args, cb) {
-      var filePath = argStr(args, 'file_identifier', '');
+      var filePath = cleanFilePath(argStr(args, 'file_identifier', ''));
       var filter = argStr(args, 'section_filter', '').toLowerCase();
       if (!filePath) return cb(null, 'Error: file_identifier is required');
       try {
@@ -82,7 +82,7 @@ function register(registry, mc) {
       required: ['file_identifier'],
     },
     fn: function (args, cb) {
-      var filePath = argStr(args, 'file_identifier', '');
+      var filePath = cleanFilePath(argStr(args, 'file_identifier', ''));
       var lang = argStr(args, 'language', '').toLowerCase();
       if (!filePath) return cb(null, 'Error: file_identifier is required');
       try {
@@ -97,6 +97,10 @@ function register(registry, mc) {
       } catch (e) { cb(null, 'Error: ' + e.message); }
     },
   });
+}
+
+function cleanFilePath(raw) {
+  return raw.replace(/^neo[\/\\]/, '');
 }
 
 function findNeoDir() {

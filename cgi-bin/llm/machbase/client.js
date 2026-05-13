@@ -150,7 +150,7 @@ function createClient(cfg) {
     querySQL: querySQL, executeTQL: executeTQL,
     webGet: webGet, webPost: webPost, webPostRaw: webPostRaw, webDelete: webDelete, webPut: webPut,
     createFolder: createFolder, writeFile: writeFile, readFile: readFile, deleteFile: deleteFile, listDir: listDir,
-    escapePath: escapePath,
+    escapePath: escapePath, baseURL: baseURL, user: cfg.user,
   };
 }
 

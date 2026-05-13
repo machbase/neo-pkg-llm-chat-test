@@ -1,10 +1,9 @@
 {
-  "name": "neo-pkg-llm-chat-test",
-  "version": "0.0.2",
+  "name": "neo-pkg-llm-chat",
+  "version": "1.0.1",
   "scripts": {
     "start": "./scripts/start.js",
     "stop": "./scripts/stop.js",
-    "install": "./scripts/install.js",
     "uninstall": "./scripts/uninstall.js"
   },
   "dependencies": {}

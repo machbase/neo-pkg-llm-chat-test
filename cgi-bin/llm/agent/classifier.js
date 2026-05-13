@@ -1,21 +1,22 @@
 // Time range parsing and skill hints for multi-turn support
 
-var TIME_RANGE_RE = /(최근|지난)\s*(\d+)\s*(시간|분|일|주|개월|년)/;
+var TIME_RANGE_KO_RE = /(최근|지난)\s*(\d+)\s*(시간|분|일|주|개월|년)/;
+var TIME_RANGE_EN_RE = /(last|past|recent)\s+(\d+)\s*(hours?|minutes?|mins?|days?|weeks?|months?|years?)/i;
 
 function parseTimeRange(query) {
   var now = new Date();
   var startTime = null;
   var label = '';
 
-  // "오늘"
-  if (query.indexOf('오늘') >= 0) {
+  // "오늘" / "today"
+  if (query.indexOf('오늘') >= 0 || /\btoday\b/i.test(query)) {
     startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    label = '오늘';
+    label = query.indexOf('오늘') >= 0 ? '오늘' : 'today';
   }
 
-  // "최근 N시간/분/일/주/개월/년"
+  // Korean: "최근 N시간/분/일/주/개월/년"
   if (!label) {
-    var m = TIME_RANGE_RE.exec(query);
+    var m = TIME_RANGE_KO_RE.exec(query);
     if (m) {
       var n = parseInt(m[2], 10);
       var unit = m[3];
@@ -34,6 +35,34 @@ function parseTimeRange(query) {
           break;
       }
       label = m[0];
+    }
+  }
+
+  // English: "last/past/recent N hours/minutes/days/weeks/months/years"
+  if (!label) {
+    var me = TIME_RANGE_EN_RE.exec(query);
+    if (me) {
+      var ne = parseInt(me[2], 10);
+      var ue = me[3].toLowerCase().replace(/s$/, '');
+      switch (ue) {
+        case 'minute': case 'min':
+          startTime = new Date(now.getTime() - ne * 60 * 1000); break;
+        case 'hour':
+          startTime = new Date(now.getTime() - ne * 60 * 60 * 1000); break;
+        case 'day':
+          startTime = new Date(now.getTime() - ne * 24 * 60 * 60 * 1000); break;
+        case 'week':
+          startTime = new Date(now.getTime() - ne * 7 * 24 * 60 * 60 * 1000); break;
+        case 'month':
+          startTime = new Date(now.getFullYear(), now.getMonth() - ne, now.getDate(),
+            now.getHours(), now.getMinutes(), now.getSeconds());
+          break;
+        case 'year':
+          startTime = new Date(now.getFullYear() - ne, now.getMonth(), now.getDate(),
+            now.getHours(), now.getMinutes(), now.getSeconds());
+          break;
+      }
+      label = me[0];
     }
   }
 

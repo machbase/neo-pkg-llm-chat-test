@@ -179,14 +179,43 @@ function fixDashboardTime(tc, fctx) {
   var startDt = fctx.timeStartDt || fctx.dataMinDt;
   var endDt = fctx.timeEndDt || fctx.dataMaxDt;
 
+  // Fallback: if requested range has no data, shift to data's MAX(TIME)
+  var dataMaxMs = fctx.dataMaxDt ? new Date(fctx.dataMaxDt.replace(' ', 'T')).getTime() : 0;
+  var dataMinMs = fctx.dataMinDt ? new Date(fctx.dataMinDt.replace(' ', 'T')).getTime() : 0;
+
+  if (dataMaxMs > 0) {
+    // Check from args (LLM-provided) or fctx (parsed from query)
+    var checkStartMs = 0;
+    var checkEndMs = 0;
+    if (args.time_start) checkStartMs = parseInt(String(args.time_start), 10);
+    if (args.time_end) checkEndMs = parseInt(String(args.time_end), 10);
+    if (!checkStartMs && fctx.timeStartDt) checkStartMs = new Date(fctx.timeStartDt.replace(' ', 'T')).getTime();
+    if (!checkEndMs && fctx.timeEndDt) checkEndMs = new Date(fctx.timeEndDt.replace(' ', 'T')).getTime();
+
+    if (checkStartMs > dataMaxMs) {
+      var durationMs = (checkEndMs > checkStartMs) ? (checkEndMs - checkStartMs) : 10 * 24 * 3600 * 1000;
+      var newEndMs = dataMaxMs;
+      var newStartMs = Math.max(dataMaxMs - durationMs, dataMinMs);
+      args.time_start = String(newStartMs);
+      args.time_end = String(newEndMs);
+      startDt = msToDatetime(newStartMs);
+      endDt = msToDatetime(newEndMs);
+      fctx.timeStartDt = startDt;
+      fctx.timeEndDt = endDt;
+      needsStart = false;
+      needsEnd = false;
+      console.println('  [fix] Time range shifted to data: ' + startDt + ' ~ ' + endDt);
+    }
+  }
+
   if (startDt && endDt) {
     if (needsStart) {
-      var startMs = new Date(startDt.replace(' ', 'T')).getTime();
-      if (startMs > 0) args.time_start = String(startMs);
+      var startMs2 = new Date(startDt.replace(' ', 'T')).getTime();
+      if (startMs2 > 0) args.time_start = String(startMs2);
     }
     if (needsEnd) {
-      var endMs = new Date(endDt.replace(' ', 'T')).getTime();
-      if (endMs > 0) args.time_end = String(endMs);
+      var endMs2 = new Date(endDt.replace(' ', 'T')).getTime();
+      if (endMs2 > 0) args.time_end = String(endMs2);
     }
     if (needsStart || needsEnd) {
       console.println('  [fix] dashboard time → ' + startDt + ' ~ ' + endDt);

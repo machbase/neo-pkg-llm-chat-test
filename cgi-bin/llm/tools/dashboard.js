@@ -194,42 +194,105 @@ function register(registry, mc) {
       try { charts = JSON.parse(chartsStr); } catch (e) { return cb(null, 'Error: Invalid charts JSON: ' + e.message); }
       if (!Array.isArray(charts) || charts.length === 0) return cb(null, 'Error: charts must be a non-empty array');
 
-      var panels = [];
-      var x = 0, y = 0;
-      for (var i = 0; i < charts.length; i++) {
-        var c = charts[i];
-        var cType = normalizeChartType(c.type || 'Line');
-        var tqlPath = c.tql_path || '';
-        if (tqlPath) cType = 'Tql chart';
-        // Always use standard widths (ignore LLM-provided w/h)
-        var w = chartWidth(cType);
-        var h = CHART_H_DEFAULT;
-        if (x + w > GRID_COLS) { x = 0; y += CHART_H_DEFAULT; }
-        panels.push(makeChartPanel(c.title, cType, c.table || '', c.tag || '', c.column || 'VALUE', c.color || COLORS[i % COLORS.length], tqlPath, x, y, w, h));
-        x += w;
+      // Infer table name from charts
+      var tableName = '';
+      for (var ci = 0; ci < charts.length; ci++) {
+        if (charts[ci].table) { tableName = charts[ci].table; break; }
+        if (charts[ci].tql_path) {
+          var m = charts[ci].tql_path.match(/FROM\s+([A-Z_][A-Z0-9_]*)/i);
+          if (m) { tableName = m[1].toUpperCase(); break; }
+        }
+      }
+      if (!tableName) {
+        // Try from filename: "SILVER/Silver_Dashboard.dsh" → SILVER
+        var slashPos = filename.indexOf('/');
+        if (slashPos > 0) tableName = filename.substring(0, slashPos).toUpperCase();
       }
 
-      // Fill tableInfo for all panels before saving
-      fillAllPanels(mc, panels, 0, function () {
+      // Time range shift: if requested range has no data, shift to MAX(TIME)
+      var shiftedMsg = '';
+      function afterTimeShift() {
+        var panels = [];
+        var x = 0, y = 0;
+        for (var i = 0; i < charts.length; i++) {
+          var c = charts[i];
+          var cType = normalizeChartType(c.type || 'Line');
+          var tqlPath = c.tql_path || '';
+          if (tqlPath) cType = 'Tql chart';
+          var w = chartWidth(cType);
+          var h = CHART_H_DEFAULT;
+          if (x + w > GRID_COLS) { x = 0; y += CHART_H_DEFAULT; }
+          panels.push(makeChartPanel(c.title, cType, c.table || '', c.tag || '', c.column || 'VALUE', c.color || COLORS[i % COLORS.length], tqlPath, x, y, w, h));
+          x += w;
+        }
 
-      var dsh = buildDSHFile(filename, title, timeStart, timeEnd, panels);
-      var content = JSON.stringify(dsh, null, 2);
+        fillAllPanels(mc, panels, 0, function () {
+          var dsh = buildDSHFile(filename, title, timeStart, timeEnd, panels);
+          var content = JSON.stringify(dsh, null, 2);
 
-      function doWrite() {
-        mc.writeFile(filename, content, function (err) {
-          if (err) return cb(null, 'Error: Failed to save dashboard: ' + err.message);
-          var boardPath = filename.replace(/\.dsh$/i, '');
-          var dashURL = '/web/ui/board/' + boardPath;
-          cb(null, 'Dashboard created: ' + filename + ' (' + panels.length + ' charts)\n[대시보드 열기](' + dashURL + ')');
+          function doWrite() {
+            mc.writeFile(filename, content, function (err) {
+              if (err) return cb(null, 'Error: Failed to save dashboard: ' + err.message);
+              var boardPath = filename.replace(/\.dsh$/i, '');
+              var dashURL = '/web/ui/board/' + boardPath;
+              cb(null, 'Dashboard created: ' + filename + ' (' + panels.length + ' charts)' + shiftedMsg + '\n[대시보드 열기](' + dashURL + ')');
+            });
+          }
+
+          var slashIdx = filename.lastIndexOf('/');
+          if (slashIdx > 0) {
+            mc.createFolder(filename.substring(0, slashIdx), function () { doWrite(); });
+          } else { doWrite(); }
         });
       }
 
-      var slashIdx = filename.lastIndexOf('/');
-      if (slashIdx > 0) {
-        mc.createFolder(filename.substring(0, slashIdx), function () { doWrite(); });
-      } else { doWrite(); }
-
-      }); // fillAllPanels end
+      // Check if time range needs shifting
+      if (tableName && timeStart) {
+        var startMs = parseInt(timeStart, 10);
+        if (startMs > 0) {
+          mc.querySQL('SELECT MAX(TIME) FROM ' + tableName, 'ms', '', '', function (err, raw) {
+            if (err) return afterTimeShift();
+            try {
+              var maxMs = 0;
+              var parsed = JSON.parse(raw);
+              if (parsed && parsed.data && parsed.data.rows && parsed.data.rows.length > 0) {
+                maxMs = parseInt(String(parsed.data.rows[0][0]), 10);
+              }
+              if (!maxMs) {
+                var lines = raw.split('\n');
+                if (lines.length >= 2) maxMs = parseInt(lines[1].trim(), 10);
+              }
+              if (maxMs > 0 && startMs > maxMs) {
+                var endMs = parseInt(timeEnd, 10) || startMs;
+                var duration = endMs - startMs;
+                if (duration <= 0) duration = 10 * 24 * 3600 * 1000;
+                var minMs = 0;
+                // Also get MIN(TIME) for lower bound
+                mc.querySQL('SELECT MIN(TIME) FROM ' + tableName, 'ms', '', '', function (err2, raw2) {
+                  try {
+                    var p2 = JSON.parse(raw2);
+                    if (p2 && p2.data && p2.data.rows && p2.data.rows.length > 0) minMs = parseInt(String(p2.data.rows[0][0]), 10);
+                  } catch (e2) {
+                    var l2 = (raw2 || '').split('\n');
+                    if (l2.length >= 2) minMs = parseInt(l2[1].trim(), 10);
+                  }
+                  var newEnd = maxMs;
+                  var newStart = Math.max(maxMs - duration, minMs || 0);
+                  timeStart = String(newStart);
+                  timeEnd = String(newEnd);
+                  shiftedMsg = '\n[주의] 요청 기간에 데이터가 없어 실제 데이터 기간으로 자동 조정됨: ' + new Date(newStart).toISOString().substring(0,10) + ' ~ ' + new Date(newEnd).toISOString().substring(0,10);
+                  console.println('[dashboard] Time shifted: ' + new Date(newStart).toISOString() + ' ~ ' + new Date(newEnd).toISOString());
+                  afterTimeShift();
+                });
+                return;
+              }
+            } catch (e) { /* ignore */ }
+            afterTimeShift();
+          });
+          return;
+        }
+      }
+      afterTimeShift();
     },
   });
 

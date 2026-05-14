@@ -2,7 +2,12 @@ var { createMessage } = require('../llm/types');
 var { createBuilder, formatCatalog } = require('../context/builder');
 var { createRegistry: createSkillRegistry } = require('../skill/skill');
 var { createFixerContext, fix, fixDashboardTime, captureResults, validateTagInArgs } = require('../fixer/fixer');
+var { setExpandTemplateFunc } = require('../fixer/tql_fix');
+var { expandTemplate } = require('../tools/tql_templates');
 var { parseTimeRange, buildSkillHint, compactHistory, inferTableName } = require('./classifier');
+
+// Register template expansion function once at module load
+setExpandTemplateFunc(expandTemplate);
 var { createPipeline } = require('../guard/guard');
 var ConsecutiveFailureGuard = require('../guard/consecutive_failure');
 var DashboardEarlyGuard = require('../guard/dashboard_early');

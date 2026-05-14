@@ -75,6 +75,20 @@ var SegHTMLReportWorkflow = '## HTML 분석 리포트 ("리포트", "보고서" 
   '→ 대시보드/TQL 파일을 만들지 마세요! save_html_report 도구를 바로 호출하세요.\n' +
   '→ 도구 호출 시 모든 파라미터를 빠짐없이 전달하세요.\n';
 
+var SegTimerWorkflow = '## 타이머 생성 ("타이머", "스케줄", "주기적", "수집" 키워드 포함 시)\n' +
+  '→ 텍스트로 코드/명령어를 보여주지 마세요! 반드시 도구를 직접 호출하여 완료하세요.\n\n' +
+  'NAMING RULE: 타이머, 테이블, TQL 폴더에 동일한 이름을 사용하세요.\n' +
+  '예: 사용자가 "센서 데이터"를 요청하면 NAME=SENSOR_DATA로 통일.\n' +
+  '  table=SENSOR_DATA, TQL path=SENSOR_DATA/SENSOR_DATA.tql, timer=SENSOR_DATA\n\n' +
+  '반드시 다음 순서대로 도구를 호출하세요:\n' +
+  '1. get_full_document_content(file_identifier="utilities/timer-templates.md") → 템플릿 문서 조회 (필수!)\n' +
+  '2. execute_sql_query → TAG TABLE 생성\n' +
+  '   CREATE TAG TABLE IF NOT EXISTS NAME (name VARCHAR(80) PRIMARY KEY, time DATETIME BASETIME, value DOUBLE SUMMARIZED) WITH ROLLUP\n' +
+  '3. save_tql_file → TQL 스크립트 저장 (1번 문서의 패턴/예제를 참고하여 작성). 경로: NAME/NAME.tql\n' +
+  '4. add_timer(name=NAME, schedule="@every 5s", path="NAME/NAME.tql") → 타이머 등록\n' +
+  '5. start_timer(name=NAME) → 타이머 시작. 생성만으로는 실행되지 않음!\n\n' +
+  '정리(cleanup): stop_timer → delete_timer → delete_file(TQL) → delete_file(폴더) → DROP TABLE CASCADE\n';
+
 var SegErrorHandling = '## 에러 발생 시 (매우 중요!)\n' +
   '- **같은 에러가 1번이라도 나오면 즉시 다른 접근법으로 전환하세요.**\n' +
   '- 에러 메시지를 정확히 읽고 원인을 파악한 뒤 다른 방법으로 재시도하세요.\n' +
@@ -100,6 +114,7 @@ module.exports = {
   SegAdvancedWorkflow: SegAdvancedWorkflow,
   SegBasicWorkflow: SegBasicWorkflow,
   SegHTMLReportWorkflow: SegHTMLReportWorkflow,
+  SegTimerWorkflow: SegTimerWorkflow,
   SegErrorHandling: SegErrorHandling,
   SegSqlTools: SegSqlTools,
   SegCommonProhibitions: SegCommonProhibitions,

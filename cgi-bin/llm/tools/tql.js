@@ -47,27 +47,75 @@ function register(registry, mc) {
       if (!filename.toLowerCase().endsWith('.tql')) filename += '.tql';
 
       var slashIdx = filename.lastIndexOf('/');
+      var shiftedMsg = '';
 
-      function afterFolder() {
-        // Validate by executing
-        mc.executeTQL(tqlContent, function (err, testResult) {
-          if (err) return cb(null, 'Error: TQL validation failed: ' + err.message);
-          if (testResult && testResult.toLowerCase().indexOf('error') === 0) {
-            return cb(null, 'Error: TQL validation failed: ' + testResult);
-          }
-          // Save file
-          mc.writeFile(filename, tqlContent, function (err2) {
-            if (err2) return cb(null, 'Error: Failed to save file: ' + err2.message);
-            cb(null, 'TQL file saved: ' + filename);
+      function doSave() {
+        function afterFolder() {
+          mc.executeTQL(tqlContent, function (err, testResult) {
+            if (err) return cb(null, 'Error: TQL validation failed: ' + err.message);
+            if (testResult && testResult.toLowerCase().indexOf('error') === 0) {
+              return cb(null, 'Error: TQL validation failed: ' + testResult);
+            }
+            mc.writeFile(filename, tqlContent, function (err2) {
+              if (err2) return cb(null, 'Error: Failed to save file: ' + err2.message);
+              cb(null, 'TQL file saved: ' + filename + shiftedMsg);
+            });
           });
-        });
+        }
+
+        if (slashIdx > 0) {
+          mc.createFolder(filename.substring(0, slashIdx), function () { afterFolder(); });
+        } else {
+          afterFolder();
+        }
       }
 
-      if (slashIdx > 0) {
-        mc.createFolder(filename.substring(0, slashIdx), function () { afterFolder(); });
-      } else {
-        afterFolder();
+      // Time shift: if TQL contains TO_DATE with future times, shift to data range
+      var toDateRe = /TO_DATE\s*\(\s*'([^']+)'\s*\)/g;
+      var fromRe = /FROM\s+([A-Za-z_][A-Za-z0-9_]*)/i;
+      var dates = [];
+      var m;
+      while ((m = toDateRe.exec(tqlContent)) !== null) dates.push(m[1]);
+      var tableMatch = fromRe.exec(tqlContent);
+
+      if (dates.length >= 2 && tableMatch) {
+        var tblName = tableMatch[1].toUpperCase();
+        var reqStart = new Date(dates[0]).getTime();
+        var reqEnd = new Date(dates[1]).getTime();
+
+        if (reqStart > 0 && reqEnd > 0) {
+          mc.querySQL('SELECT MAX(TIME) FROM ' + tblName, 'ms', '', '', function (err, raw) {
+            if (err) return doSave();
+            var maxMs = 0;
+            try {
+              var p = JSON.parse(raw);
+              if (p && p.data && p.data.rows && p.data.rows.length > 0) maxMs = parseInt(String(p.data.rows[0][0]), 10);
+            } catch (e) {
+              var lines = (raw || '').split('\n');
+              if (lines.length >= 2) maxMs = parseInt(lines[1].trim(), 10);
+            }
+
+            if (maxMs > 0 && reqStart > maxMs) {
+              var duration = reqEnd - reqStart;
+              var newEnd = maxMs;
+              var newStart = maxMs - duration;
+              // Format as datetime strings
+              function fmtDt(ms) {
+                var d = new Date(ms);
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' +
+                  String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+              }
+              tqlContent = tqlContent.replace("TO_DATE('" + dates[0] + "')", "TO_DATE('" + fmtDt(newStart) + "')");
+              tqlContent = tqlContent.replace("TO_DATE('" + dates[1] + "')", "TO_DATE('" + fmtDt(newEnd) + "')");
+              shiftedMsg = '\n[주의] 요청 기간에 데이터가 없어 실제 데이터 기간으로 자동 조정됨: ' + fmtDt(newStart) + ' ~ ' + fmtDt(newEnd);
+              console.println('[tql] Time shifted: ' + fmtDt(newStart) + ' ~ ' + fmtDt(newEnd));
+            }
+            doSave();
+          });
+          return;
+        }
       }
+      doSave();
     },
   });
 }

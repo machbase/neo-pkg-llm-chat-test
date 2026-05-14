@@ -109,11 +109,23 @@ function buildSkillHint(query, activeSkill, timeRange) {
         '오직 save_html_report만 사용하세요. ' +
         '리포트 생성 후 URL을 최종 답변에 포함하세요!' + timeHint + ']';
     case 'AdvancedAnalysis':
-      return '[시스템 힌트: 고급 분석 키워드가 감지되었습니다. 고급 분석(TQL 템플릿) 절차를 따르세요.' + timeHint + ']';
+      return '[시스템 힌트: 고급 분석 키워드가 감지되었습니다. 고급 분석(TQL 템플릿) 절차를 따르세요.' + timeHint +
+        ' ★ 마지막에 반드시 preview_dashboard를 호출하고, 반환된 URL을 최종 답변에 포함하세요!]';
     case 'BasicAnalysis':
       return '[시스템 힌트: 기본 분석 요청입니다. 기본 분석(table-based 차트, create_dashboard_with_charts) 절차를 따르세요. ' +
-        'TQL 파일/템플릿/save_tql_file/create_folder를 절대 사용하지 마세요.' + timeHint + ']';
+        'TQL 파일/템플릿/save_tql_file/create_folder를 절대 사용하지 마세요.' + timeHint +
+        ' ★ 마지막에 반드시 preview_dashboard를 호출하고, 반환된 URL을 최종 답변에 포함하세요!]';
+    case 'Timer':
+      return '[시스템 힌트: 타이머 요청입니다. 시스템 프롬프트의 타이머 생성 워크플로우를 따르세요.\n' +
+        '★ "예제 타이머 만들어줘" = 샘플 타이머를 직접 생성하라는 의미입니다. 설명/안내 금지! 도구를 호출하여 실제로 만드세요.\n' +
+        '★ "제거/삭제해줘" = 반드시 stop_timer → delete_timer → delete_file → DROP TABLE 순서로 도구를 각각 호출하세요. 한번에 완료 보고 금지!\n' +
+        '★ 코드를 텍스트로 보여주지 말고 도구를 직접 호출하세요.]';
     default:
+      // Use skill's own hint if defined
+      if (activeSkill.hint) {
+        var h = typeof activeSkill.hint === 'function' ? activeSkill.hint(query) : activeSkill.hint;
+        return '[시스템 힌트: ' + h + ']';
+      }
       return '';
   }
 }

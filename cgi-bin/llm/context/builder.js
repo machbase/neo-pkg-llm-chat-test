@@ -86,6 +86,7 @@ function createBuilder() {
       'AdvancedWorkflow': segments.SegAdvancedWorkflow || '',
       'BasicWorkflow': segments.SegBasicWorkflow || '',
       'HTMLReportWorkflow': segments.SegHTMLReportWorkflow || '',
+      'TimerWorkflow': segments.SegTimerWorkflow || '',
       'ErrorHandling': segments.SegErrorHandling,
     };
     return standardMap[name] || '';

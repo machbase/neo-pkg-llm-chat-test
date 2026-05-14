@@ -24,25 +24,30 @@ function createRegistry() {
   function classify(query) {
     var lower = query.toLowerCase();
 
-    // 1. DocLookup
+    // 1. Report (before DocLookup - "리포트" should not fall into doc lookup)
+    if (containsKeyword(lower, ['리포트', '보고서', 'report', 'summary report'])) {
+      return skills['Report'];
+    }
+
+    // 2. Timer (before DocLookup - "예제 타이머 만들어줘" should create, not explain)
+    var hasTimerKw = containsKeyword(lower, [
+      '타이머', '스케줄', '스케줄러', '주기적', '반복 실행', '수집 설정',
+      'timer', 'scheduler', 'schedule', 'cron', 'periodic', 'interval',
+    ]);
+    if (hasTimerKw) {
+      var isTimerAction = containsKeyword(lower, [
+        '만들', '생성', '추가', '등록', '시작', '중지', '삭제', '제거', '목록', '리스트',
+        'create', 'add', 'start', 'stop', 'delete', 'remove', 'list',
+      ]);
+      if (isTimerAction) return skills['Timer'];
+    }
+
+    // 3. DocLookup
     if (containsKeyword(lower, [
       '뭐야', '뭔가요', '란?', '이란', '사용법', '문법', '예제', '알려줘', '설명해', '어떻게',
       'how to', 'what is', 'what are', 'explain', 'usage', 'example', 'syntax', 'help me understand',
     ]) || containsKeyword(lower, ['문서', '매뉴얼', 'manual', 'doc', 'documentation', 'reference'])) {
       return skills['DocLookup'];
-    }
-
-    // 2. Report
-    if (containsKeyword(lower, ['리포트', '보고서', 'report', 'summary report'])) {
-      return skills['Report'];
-    }
-
-    // 3. Timer
-    if (containsKeyword(lower, [
-      '타이머', '스케줄', '스케줄러', '주기적', '반복 실행', '수집 설정', '수집',
-      'timer', 'scheduler', 'schedule', 'cron', 'every', 'periodic', 'interval', 'collect',
-    ])) {
-      return skills['Timer'];
     }
 
     // 4. Advanced

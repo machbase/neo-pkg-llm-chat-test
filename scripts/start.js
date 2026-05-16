@@ -9,7 +9,7 @@ var service = require('service');
 
 var ROOT = path.resolve(path.dirname(process.argv[1]), '..', 'cgi-bin');
 var LLM_DIR = path.join(ROOT, 'llm');
-var SERVICE_NAME = 'neo-pkg-llm-chat-test';
+var SERVICE_NAME = 'neo-pkg-llm';
 var LAUNCHER = path.join(ROOT, 'llm-launcher.js');
 
 if (!fs.existsSync(LAUNCHER)) {

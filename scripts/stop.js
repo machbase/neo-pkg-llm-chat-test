@@ -5,7 +5,7 @@
 var process = require('process');
 var service = require('service');
 
-var SERVICE_NAME = 'neo-pkg-llm-chat-test';
+var SERVICE_NAME = 'neo-pkg-llm';
 
 console.println('stopping service:', SERVICE_NAME);
 service.stop(SERVICE_NAME, function(err) {

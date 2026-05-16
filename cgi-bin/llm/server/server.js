@@ -1,5 +1,6 @@
 var http = require('http');
 var http2 = require('@jsh/http');
+
 var { WebSocketServer } = require('ws');
 var { createWSServer } = require('./ws_server');
 
@@ -167,6 +168,34 @@ function runServer(cfg, port, llmClient, mc, registry) {
     ctx.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   }
 
+  // This @jsh/http build exposes neither `options()` nor `all()` on Server, so we can't
+  // answer CORS preflight directly. Frontend works around it by sending only "simple"
+  // requests: POST with Content-Type 'text/plain' (no preflight), with PUT/DELETE
+  // tunneled via POST + `?_method=PUT|DELETE`. Each handler still emits CORS headers on
+  // the actual response so the browser is allowed to read it.
+
+  function parseBody(ctx) {
+    var body = ctx.request.body;
+    if (typeof body === 'string') return JSON.parse(body);
+    return body;
+  }
+
+  function readConfigFile(name) {
+    var fp = pathMod.join(CONFIGS_DIR, name + '.json');
+    if (!fs.existsSync(fp)) return null;
+    return JSON.parse(fs.readFileSync(fp, { encoding: 'utf8' }));
+  }
+
+  function writeConfigFile(name, data) {
+    if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+    fs.writeFileSync(pathMod.join(CONFIGS_DIR, name + '.json'), JSON.stringify(data, null, 2));
+  }
+
+  function removeConfigFile(name) {
+    var fp = pathMod.join(CONFIGS_DIR, name + '.json');
+    if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  }
+
   function jsonReply(ctx, status, data) {
     setCORS(ctx);
     ctx.setHeader('Content-Type', 'application/json');
@@ -195,17 +224,22 @@ function runServer(cfg, port, llmClient, mc, registry) {
     return names;
   }
 
-  // GET /api/config → config.json 반환
+  // /api/config — main config.json (server.port etc)
   server.get('/api/config', function (ctx) {
     console.println('[Server] GET /api/config');
     jsonReply(ctx, 200, { success: true, reason: 'success', data: readMainConfig() });
   });
+  server.put('/api/config', handleMainConfigPut);
+  // POST + ?_method=PUT fallback (frontend may use simple POST to avoid CORS preflight)
+  server.post('/api/config', function (ctx) {
+    var override = (ctx.query('_method') || '').toUpperCase();
+    if (override === 'PUT') { handleMainConfigPut(ctx); return; }
+    jsonReply(ctx, 405, { success: false, reason: 'method not allowed (use _method=PUT)' });
+  });
 
-  // PUT /api/config → port 수정
-  server.put('/api/config', function (ctx) {
+  function handleMainConfigPut(ctx) {
     try {
-      var body = ctx.request.body;
-      var parsed = (typeof body === 'string') ? JSON.parse(body) : body;
+      var parsed = parseBody(ctx);
       var existing = readMainConfig();
       if (parsed.server && parsed.server.port) {
         existing.server = existing.server || {};
@@ -216,116 +250,110 @@ function runServer(cfg, port, llmClient, mc, registry) {
     } catch (e) {
       jsonReply(ctx, 500, { success: false, reason: 'failed to save: ' + e.message });
     }
-  });
+  }
 
-  // GET /api/configs → config 목록 or 상세
+  // /api/configs — config list / create (POST), and PUT/DELETE by ?name= query
   server.get('/api/configs', function (ctx) {
     var name = ctx.query('name');
     if (!name) {
       jsonReply(ctx, 200, { success: true, reason: 'success', data: { configs: listConfigNames() } });
-    } else {
-      try {
-        var fp = pathMod.join(CONFIGS_DIR, name + '.json');
-        if (!fs.existsSync(fp)) {
-          jsonReply(ctx, 404, { success: false, reason: 'config not found: ' + name });
-        } else {
-          var data = JSON.parse(fs.readFileSync(fp, { encoding: 'utf8' }));
-          jsonReply(ctx, 200, { success: true, reason: 'success', data: { config: data, running: false } });
-        }
-      } catch (e) {
-        jsonReply(ctx, 500, { success: false, reason: e.message });
-      }
+      return;
     }
-  });
-
-  // POST /api/configs → config 생성
-  server.post('/api/configs', function (ctx) {
     try {
-      var body = ctx.request.body;
-      var parsed = (typeof body === 'string') ? JSON.parse(body) : body;
-      var saveName = (parsed.machbase && parsed.machbase.user) || 'sys';
-      if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
-      fs.writeFileSync(pathMod.join(CONFIGS_DIR, saveName + '.json'), JSON.stringify(parsed, null, 2));
-      jsonReply(ctx, 201, { success: true, reason: 'success', data: { name: saveName } });
-    } catch (e) {
-      jsonReply(ctx, 500, { success: false, reason: e.message });
-    }
-  });
-
-  // PUT /api/configs?name=xxx → config 수정
-  server.put('/api/configs', function (ctx) {
-    var name = ctx.query('name');
-    if (!name) { jsonReply(ctx, 400, { success: false, reason: 'name parameter required' }); return; }
-    try {
-      var body = ctx.request.body;
-      var parsed = (typeof body === 'string') ? JSON.parse(body) : body;
-      if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
-      fs.writeFileSync(pathMod.join(CONFIGS_DIR, name + '.json'), JSON.stringify(parsed, null, 2));
-      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
-    } catch (e) {
-      jsonReply(ctx, 500, { success: false, reason: e.message });
-    }
-  });
-
-  // DELETE /api/configs?name=xxx → config 삭제
-  server.delete('/api/configs', function (ctx) {
-    var name = ctx.query('name');
-    if (!name) { jsonReply(ctx, 400, { success: false, reason: 'name parameter required' }); return; }
-    try {
-      var fp = pathMod.join(CONFIGS_DIR, name + '.json');
-      if (fs.existsSync(fp)) fs.unlinkSync(fp);
-      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
-    } catch (e) {
-      jsonReply(ctx, 500, { success: false, reason: e.message });
-    }
-  });
-
-  // --- Path-param routes (frontend uses /api/configs/:name) ---
-
-  // GET /api/configs/:name → 개별 config 상세 조회
-  server.get('/api/configs/:name', function (ctx) {
-    var name = ctx.param('name');
-    console.println('[Server] GET /api/configs/' + name);
-    try {
-      var fp = pathMod.join(CONFIGS_DIR, name + '.json');
-      if (!fs.existsSync(fp)) {
+      var data = readConfigFile(name);
+      if (!data) {
         jsonReply(ctx, 404, { success: false, reason: 'config not found: ' + name });
       } else {
-        var data = JSON.parse(fs.readFileSync(fp, { encoding: 'utf8' }));
         jsonReply(ctx, 200, { success: true, reason: 'success', data: { config: data, running: false } });
       }
     } catch (e) {
       jsonReply(ctx, 500, { success: false, reason: e.message });
     }
   });
-
-  // PUT /api/configs/:name → config 수정
-  server.put('/api/configs/:name', function (ctx) {
-    var name = ctx.param('name');
-    console.println('[Server] PUT /api/configs/' + name);
+  server.post('/api/configs', function (ctx) {
+    // POST may carry ?_method=PUT|DELETE to avoid CORS preflight for those operations
+    var override = (ctx.query('_method') || '').toUpperCase();
+    if (override === 'PUT') { handleConfigsPutByQuery(ctx); return; }
+    if (override === 'DELETE') { handleConfigsDeleteByQuery(ctx); return; }
     try {
-      var body = ctx.request.body;
-      var parsed = (typeof body === 'string') ? JSON.parse(body) : body;
-      if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
-      fs.writeFileSync(pathMod.join(CONFIGS_DIR, name + '.json'), JSON.stringify(parsed, null, 2));
-      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
+      var parsed = parseBody(ctx);
+      var saveName = (parsed.machbase && parsed.machbase.user) || 'sys';
+      writeConfigFile(saveName, parsed);
+      jsonReply(ctx, 201, { success: true, reason: 'success', data: { name: saveName } });
     } catch (e) {
       jsonReply(ctx, 500, { success: false, reason: e.message });
     }
   });
+  server.put('/api/configs', handleConfigsPutByQuery);
+  server.delete('/api/configs', handleConfigsDeleteByQuery);
 
-  // DELETE /api/configs/:name → config 삭제
-  server.delete('/api/configs/:name', function (ctx) {
-    var name = ctx.param('name');
-    console.println('[Server] DELETE /api/configs/' + name);
+  function handleConfigsPutByQuery(ctx) {
+    var name = ctx.query('name');
+    if (!name) { jsonReply(ctx, 400, { success: false, reason: 'name parameter required' }); return; }
     try {
-      var fp = pathMod.join(CONFIGS_DIR, name + '.json');
-      if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      writeConfigFile(name, parseBody(ctx));
       jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
     } catch (e) {
       jsonReply(ctx, 500, { success: false, reason: e.message });
     }
+  }
+  function handleConfigsDeleteByQuery(ctx) {
+    var name = ctx.query('name');
+    if (!name) { jsonReply(ctx, 400, { success: false, reason: 'name parameter required' }); return; }
+    try {
+      removeConfigFile(name);
+      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
+    } catch (e) {
+      jsonReply(ctx, 500, { success: false, reason: e.message });
+    }
+  }
+
+  // /api/configs/:name — path-param variant (frontend default for detail/update/delete)
+  server.get('/api/configs/:name', handleConfigGetByName);
+  server.put('/api/configs/:name', handleConfigPutByName);
+  server.delete('/api/configs/:name', handleConfigDeleteByName);
+  // POST + ?_method=PUT|DELETE (frontend uses this to avoid CORS preflight)
+  server.post('/api/configs/:name', function (ctx) {
+    var override = (ctx.query('_method') || '').toUpperCase();
+    if (override === 'DELETE') { handleConfigDeleteByName(ctx); return; }
+    // Default POST on a :name path = update (PUT semantics)
+    handleConfigPutByName(ctx);
   });
+
+  function handleConfigGetByName(ctx) {
+    var name = ctx.param('name');
+    console.println('[Server] GET /api/configs/' + name);
+    try {
+      var data = readConfigFile(name);
+      if (!data) {
+        jsonReply(ctx, 404, { success: false, reason: 'config not found: ' + name });
+      } else {
+        jsonReply(ctx, 200, { success: true, reason: 'success', data: { config: data, running: false } });
+      }
+    } catch (e) {
+      jsonReply(ctx, 500, { success: false, reason: e.message });
+    }
+  }
+  function handleConfigPutByName(ctx) {
+    var name = ctx.param('name');
+    console.println('[Server] PUT/POST(_method=PUT) /api/configs/' + name);
+    try {
+      writeConfigFile(name, parseBody(ctx));
+      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
+    } catch (e) {
+      jsonReply(ctx, 500, { success: false, reason: e.message });
+    }
+  }
+  function handleConfigDeleteByName(ctx) {
+    var name = ctx.param('name');
+    console.println('[Server] DELETE/POST(_method=DELETE) /api/configs/' + name);
+    try {
+      removeConfigFile(name);
+      jsonReply(ctx, 200, { success: true, reason: 'success', data: { name: name } });
+    } catch (e) {
+      jsonReply(ctx, 500, { success: false, reason: e.message });
+    }
+  }
 
   // GET /api/debug → 경로 디버그
   server.get('/api/debug', function (ctx) {
@@ -352,7 +380,7 @@ function runServer(cfg, port, llmClient, mc, registry) {
     jsonReply(ctx, 200, { ok: true, data: { port: p } });
   });
 
-  // --- REST endpoint ---
+  // --- REST endpoint (test stub; frontend uses WebSocket for chat) ---
   server.post('/api/chat', function (ctx) {
     var body = ctx.request.body;
     console.println('[Server] POST /api/chat: ' + JSON.stringify(body).substring(0, 200));
@@ -369,12 +397,36 @@ function runServer(cfg, port, llmClient, mc, registry) {
   var wss = new WebSocketServer({ server: server, path: '/ws' });
   var wss2 = new WebSocketServer({ server: server, path: '/:user/ws' });
 
+  // Extract :user from a WS request URL containing `/<user>/ws`.
+  // jsh's WebSocket may give us either a path (`/joy/ws`) or a full URL
+  // (`ws://host:port/joy/ws`), so the match is anchored to the `/<user>/ws`
+  // segment, not the start of the string. Returns '' for the legacy `/ws`
+  // path (caller falls back to cfg.machbase.user).
+  function extractUserFromWsUrl(url) {
+    if (!url) return '';
+    var s = String(url);
+    var m = s.match(/\/([^\/\?]+)\/ws(?:[\/\?]|$)/);
+    if (!m) return '';
+    var seg = m[1];
+    if (seg === 'ws') return ''; // matched the legacy /ws route, no user
+    try { return decodeURIComponent(seg); } catch (e) { return seg; }
+  }
+
   function onWSConnection(socket, request) {
-    console.println('[Server] WS client connected from ' + request.remoteAddress + ' path=' + request.url);
+    // Best-effort: try to extract user from the WS URL path. In this jsh build the
+    // URL appears to come through empty for WS upgrades, so this often returns ''
+    // and we leave authUserID empty — handleMessage will fall back to msg.user_id
+    // (set by the frontend) for per-user routing. authUserID stays captured in the
+    // closure rather than on the socket object, because Go-backed WS objects in
+    // goja silently drop arbitrary property assignments.
+    var extracted = extractUserFromWsUrl(request && request.url);
+    var authUserID = extracted || '';
+    console.println('[Server] WS client connected from ' + (request && request.remoteAddress)
+      + ' path=' + (request && request.url) + ' user=' + (authUserID || '(from msg)'));
 
     socket.on('message', function (event) {
       var raw = (typeof event === 'string') ? event : (event && event.data) ? event.data : String(event);
-      wsHandler.handleMessage(socket, raw);
+      wsHandler.handleMessage(socket, raw, authUserID);
     });
 
     socket.on('close', function () {

@@ -5,10 +5,10 @@ function defaultConfig() {
   return {
     server: { port: '8884' },
     machbase: { host: '127.0.0.1', port: '5654', user: 'sys', password: 'manager' },
-    claude: { api_key: '', models: [{ name: 'sonnet', model_id: 'claude-sonnet-4-20250514' }] },
-    chatgpt: { api_key: '', models: [{ name: 'gpt-4o' }] },
-    gemini: { api_key: '', models: [{ name: 'gemini-2.5-flash', model_id: 'gemini-2.5-flash' }] },
-    ollama: { base_url: '', models: [{ name: 'qwen3:8b' }] },
+    claude: { api_key: '', models: [{ name: '', model_id: '' }] },
+    chatgpt: { api_key: '', models: [{ name: '', model_id: '' }] },
+    gemini: { api_key: '', models: [{ name: '', model_id: '' }] },
+    ollama: { base_url: '', models: [{ name: '', model_id: '' }] },
   };
 }
 
@@ -110,6 +110,7 @@ function getAPIKey(cfg) {
 }
 
 module.exports = {
+  defaultConfig,
   loadConfig,
   machbaseURL,
   ollamaURL,

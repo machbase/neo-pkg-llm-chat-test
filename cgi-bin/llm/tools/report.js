@@ -49,7 +49,8 @@ function register(registry, mc) {
           '- 기대 효과\n\n' +
           '## 내용: 즉시 조치/단기 개선/중장기 전략으로 구분하여 우선순위별 정리' },
         rollup_unit: { type: 'string', enum: ['sec', 'min', 'hour', 'day', 'week', 'month'] },
-        stock: { type: 'string' }, time_start: { type: 'string' }, time_end: { type: 'string' },
+        tag_name: { type: 'string', description: '분석 대상 태그명 또는 종목명. 사용자가 특정 대상을 언급하면 반드시 전달.' },
+        time_start: { type: 'string' }, time_end: { type: 'string' },
       },
       required: ['table'],
     },
@@ -119,7 +120,7 @@ function saveHtmlReport(mc, args, cb) {
     timeWhereBase = ' WHERE TIME BETWEEN ' + tsNano + ' AND ' + teNano;
   }
 
-  var stock = anyStr(norm, 'stock') || anyStr(norm, 'tag') || '';
+  var stock = anyStr(norm, 'tag_name') || anyStr(norm, 'stock') || anyStr(norm, 'tag') || '';
   if (stock) stock = extractStockPrefix(stock);
   var rollupUnit = anyStr(norm, 'rollup_unit') || pickRollupUnit(timeStart, timeEnd);
   var statsCSV = '';
@@ -177,8 +178,18 @@ function saveHtmlReport(mc, args, cb) {
 
       var stockWhere = '';
       if (stock) {
-        var prefix = stock.toUpperCase() + '_';
+        var upper = stock.toUpperCase();
+        // 1) Prefix match: AMD → AMD_close, AMD_high, ...
+        var prefix = upper + '_';
         var filtered = tags.filter(function (t) { return t.toUpperCase().indexOf(prefix) === 0; });
+        // 2) Exact match fallback: AccX → AccX
+        if (filtered.length === 0) {
+          filtered = tags.filter(function (t) { return t.toUpperCase() === upper; });
+        }
+        // 3) Contains fallback: vibration → vibration_x, vibration_y
+        if (filtered.length === 0) {
+          filtered = tags.filter(function (t) { return t.toUpperCase().indexOf(upper) >= 0; });
+        }
         if (filtered.length > 0) { tags = filtered; stockWhere = " AND NAME IN ('" + filtered.join("','") + "')"; }
       }
 

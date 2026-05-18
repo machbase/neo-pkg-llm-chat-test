@@ -18,6 +18,7 @@ function createRegistry() {
   register(require('./doclookup')());
   register(require('./dataquery')());
   register(require('./timer')());
+  register(require('./systeminfo')());
   register(require('./general')());
   defaultSkill = skills['General'];
 
@@ -42,7 +43,15 @@ function createRegistry() {
       if (isTimerAction) return skills['Timer'];
     }
 
-    // 3. DocLookup
+    // 3. System status/version (before DocLookup - "서버 상태 알려줘" should query, not explain)
+    if (containsKeyword(lower, [
+      '버전', '상태', '시스템 정보', '서버 정보', '패키지',
+      'version', 'status', 'system info', 'server info',
+    ])) {
+      return skills['SystemInfo'];
+    }
+
+    // 4. DocLookup
     if (containsKeyword(lower, [
       '뭐야', '뭔가요', '란?', '이란', '사용법', '문법', '예제', '알려줘', '설명해', '어떻게',
       'how to', 'what is', 'what are', 'explain', 'usage', 'example', 'syntax', 'help me understand',
@@ -50,7 +59,7 @@ function createRegistry() {
       return skills['DocLookup'];
     }
 
-    // 4. Advanced
+    // 5. Advanced
     if (containsKeyword(lower, [
       '심층', '다각도', '고급', 'fft', 'rms', '스펙트럼', '엔벨로프',
       '진동 분석', '이상치', '이상 탐지',
@@ -60,7 +69,7 @@ function createRegistry() {
       return skills['AdvancedAnalysis'];
     }
 
-    // 5. BasicAnalysis
+    // 6. BasicAnalysis
     if (containsKeyword(lower, [
       '분석', '대시보드', '차트', '시각화', '추세', '트렌드', '패턴', '비교', '보여줘', '보여 줘', '그래프',
       'dashboard', 'chart', 'visualize', 'visualization', 'trend', 'pattern', 'compare', 'comparison',
@@ -69,7 +78,7 @@ function createRegistry() {
       return skills['BasicAnalysis'];
     }
 
-    // 6. DataQuery
+    // 7. DataQuery
     if (containsKeyword(lower, [
       '조회', '확인', '최근', '최신', '태그', '몇건', '몇 건',
       'query', 'fetch', 'retrieve', 'select', 'count', 'how many',
@@ -78,7 +87,7 @@ function createRegistry() {
       return skills['DataQuery'];
     }
 
-    // 7. "데이터"/"data" alone
+    // 8. "데이터"/"data" alone
     if (lower.indexOf('데이터') >= 0 || lower.indexOf('data') >= 0) {
       return skills['DataQuery'];
     }

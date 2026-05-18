@@ -1,1 +1,9 @@
-[2026-05-16T09:04:21.053Z] main.js require returned (server.serve should be running)
+[2026-05-18T07:34:00.626Z] STACK: GoError: http.Listener.Listen: listen tcp 0.0.0.0:8884: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+	at reflect.methodValueCall (native)
+	at serve (/lib/http.js:357:23(7))
+	at runServer (/work/public/neo-pkg-llm-chat/cgi-bin/llm/server/server.js:442:15(302))
+	at runServerMode (/work/public/neo-pkg-llm-chat/cgi-bin/llm/main.js:90:12(53))
+	at /work/public/neo-pkg-llm-chat/cgi-bin/llm/main.js:49:18(343)
+	at github.com/dop251/goja_nodejs/require.(*RequireModule).require-fm (native)
+	at /work/public/neo-pkg-llm-chat/cgi-bin/llm-launcher.js:54:10(228)
+

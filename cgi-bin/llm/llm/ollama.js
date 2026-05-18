@@ -2,7 +2,7 @@ var http2 = require('@jsh/http');
 var { createMessage, createToolCall, createChatResponse } = require('./types');
 
 var _client = http2.NewClient();
-var DEFAULT_MODEL = 'qwen3:8b';
+var DEFAULT_MODEL = 'qwen3.5:9b';
 
 function createOllamaClient(baseURL, model) {
   return {

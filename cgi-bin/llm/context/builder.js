@@ -14,7 +14,9 @@ function createBuilder() {
     if (isOllama) {
       parts.push(segmentsOllama.OllamaSegRole);
       parts.push(segmentsOllama.OllamaSegTableSchema);
+      parts.push(segmentsOllama.OllamaSegSqlTools);
       parts.push(segmentsOllama.OllamaSegErrorHandling);
+      parts.push(segmentsOllama.OllamaSegCommonProhibitions);
     } else {
       parts.push(segments.SegRole);
       parts.push(segments.SegTableSchema);
@@ -75,6 +77,7 @@ function createBuilder() {
         'AdvancedWorkflow': segmentsOllama.OllamaSegAdvancedWorkflow,
         'BasicWorkflow': segmentsOllama.OllamaSegBasicWorkflow,
         'HTMLReportWorkflow': segmentsOllama.OllamaSegHTMLReportWorkflow,
+        'TimerWorkflow': segmentsOllama.OllamaSegTimerWorkflow,
         'ErrorHandling': segmentsOllama.OllamaSegErrorHandling,
       };
       if (ollamaMap[name]) return ollamaMap[name];

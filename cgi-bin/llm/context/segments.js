@@ -99,7 +99,8 @@ var SegSqlTools = '## SQL 도구 사용법\n' +
   '- timeformat: "ms" 파라미터로 지정! SQL 안에 넣지 마세요!\n' +
   '- UPDATE 구문 사용 금지\n' +
   '- 통계 조회: SELECT NAME, COUNT(*), AVG(VALUE) FROM 테이블 GROUP BY NAME\n' +
-  '- 시간 범위 확인: SELECT MIN(TIME), MAX(TIME) FROM 테이블 (timeformat:"ms")\n';
+  '- 시간 범위 확인: SELECT MIN(TIME), MAX(TIME) FROM 테이블 (timeformat:"ms")\n' +
+  '- **버전/상태/시스템 정보 질문 → get_version() 호출** (서버 설정, 스토리지, 패키지 정보 포함)\n';
 
 var SegCommonProhibitions = '## 금지사항\n' +
   '- 도구 호출 없이 답변 절대 금지! 최소 1개 도구를 호출한 후 답변하세요.\n' +

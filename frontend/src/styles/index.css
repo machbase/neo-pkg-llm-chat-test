@@ -1962,7 +1962,7 @@ details.card > :not(summary) {
     justify-content: center;
     gap: var(--spacing-12);
     width: 100%;
-    max-width: 560px;
+    max-width: 720px;
     padding-right: 40px;
     position: relative;
     animation: chatFadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;

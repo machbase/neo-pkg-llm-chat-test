@@ -391,6 +391,7 @@ function runServer(cfg, port, llmClient, mc, registry) {
     });
   });
 
+
   // WS for models/control only (no async needed)
   // Frontend connects to /{user}/ws (e.g. /sys/ws)
   // Bind two WebSocketServers: one for /ws (legacy), one for /:user/ws (frontend)

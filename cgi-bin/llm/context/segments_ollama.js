@@ -10,10 +10,13 @@ var OllamaSegRole = '## Role\n' +
   '- Machbase knowledge: use provided tools/docs only, not pretrained knowledge.\n';
 
 var OllamaSegQueryClassification = '## Query Types (classify first!)\n' +
-  'A) Doc/concept/syntax question → search docs, then answer.\n' +
-  '   Use doc catalog below. Do NOT call list_available_documents.\n' +
-  '   get_full_document_content(file_identifier=path) → answer from content.\n' +
-  'B) Execution task → use tools directly. Docs only after 1 failure.\n';
+  'A) Doc/concept/syntax question ("뭐야","뭔가요","란?","사용법","알려줘","설명","어떻게","what is","how to","explain")\n' +
+  '   Step 1: search_documents(keyword="키워드") → 문서 경로 목록 받기\n' +
+  '   Step 2: get_full_document_content(file_identifier=경로) → 문서 읽기\n' +
+  '   Step 3: 문서 내용 기반으로 답변\n' +
+  '   → NEVER answer from your own knowledge. ALWAYS search and read doc first.\n' +
+  'B) Execution task → use tools directly. Docs only after 1 failure.\n' +
+  '\nCRITICAL: If user asks "X가 뭐야" or "X 설명해줘", MUST call search_documents first!\n';
 
 var OllamaSegTableSchema = '## Table Schema\n' +
   'TAG TABLE: NAME(tag), TIME(datetime), VALUE(double)\n' +
@@ -31,16 +34,16 @@ var OllamaSegAdvancedWorkflow = '## Advanced Analysis (심층/다각도/FFT/RMS)
   '4. SQL time range (timeformat:"ms")\n' +
   '5. get_full_document_content("tql/tql-analysis-templates.md") REQUIRED!\n' +
   '6. create_folder (English name only!)\n' +
-  '7. save_tql_file: TEMPLATE format ONLY! Never write raw TQL code!\n' +
+  '7. save_tql_file: MAX 5~6 files! TEMPLATE format ONLY!\n' +
   '   Format: tql_content="TEMPLATE:ID TABLE:name TAG:tag UNIT:unit"\n' +
-  '   English filenames only!\n' +
-  '8. create_dashboard_with_charts (all TQL files as tql_path)\n' +
+  '   English filenames only! Do NOT create duplicate files!\n' +
+  '8. create_dashboard_with_charts (all TQL files as tql_path) — call ONCE only!\n' +
   '9. preview_dashboard\n' +
   '10. Report with stats + dashboard URL\n\n' +
-  '### Template IDs\n' +
-  'Finance: 1-1(avg trend) 1-2(volatility) 1-3(price band) 1-4(tag compare) 1-5(volume) 1-6(log price)\n' +
-  'Sensor: 2-1(RMS) 2-2(FFT) 2-3(peak) 2-4(peak-to-peak) 2-5(crest factor) 2-6(data density) 2-7(3D spectrum)\n' +
-  'General: 3-1(rollup avg) 3-2(tag compare) 3-3(count trend) 3-4(MIN/MAX envelope)\n';
+  '### Pick 3~4 templates by data type:\n' +
+  'Finance (open/close/high/low/volume): 1-1(avg trend) + 1-2(volatility) + 1-4(tag compare) + 1-5(volume)\n' +
+  'Sensor/Vibration: 2-1(RMS) + 2-3(peak) + 2-4(peak-to-peak) + 2-5(crest factor)\n' +
+  'General: 3-1(rollup avg) + 3-2(tag compare) + 3-3(count trend) + 3-4(MIN/MAX envelope)\n';
 
 var OllamaSegBasicWorkflow = '## Basic Analysis (분석해줘/대시보드)\n' +
   'Use table-based charts. No TQL files needed.\n' +
@@ -50,7 +53,7 @@ var OllamaSegBasicWorkflow = '## Basic Analysis (분석해줘/대시보드)\n' +
   '5. create_dashboard_with_charts: min 5 charts\n' +
   '   filename: "TABLE/TABLE_Dashboard.dsh" (English only!)\n' +
   '   time_start,time_end: epoch ms as string\n' +
-  '   Charts: Line 2-3 + Bar 1 + Pie 1 + Gauge 1\n' +
+  '   Charts: Line 3-4 + Bar 1-2 (No Pie, No Gauge)\n' +
   '6. preview_dashboard\n' +
   '7. Report with stats + dashboard URL\n';
 
@@ -66,7 +69,7 @@ var OllamaSegTimerWorkflow = '## Timer ("타이머","스케줄","주기적","수
   '3. save_tql_file: NAME/NAME.tql (use doc patterns)\n' +
   '4. add_timer(name=NAME, schedule="@every 5s", path="NAME/NAME.tql")\n' +
   '5. start_timer(name=NAME) — must start after create!\n\n' +
-  'Cleanup: stop_timer → delete_timer → delete_file(TQL) → delete_file(folder) → DROP TABLE CASCADE\n';
+  'Cleanup: stop_timer → delete_timer → delete_file(TQL) → delete_file(folder) → DROP TABLE CASCADE;\n';
 
 var OllamaSegTQLRules = '## TQL Rules\n' +
   'SQL() inside TQL: GROUP BY required. Backticks only. No ROLLUP alias.\n' +

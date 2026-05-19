@@ -117,14 +117,22 @@ function createWSServer(mc, registry, cfg) {
     sendStreamMsg(conn, 'answer_start');
 
     // Wire up progress reporting → send tool steps as block messages
+    // If send fails (connection closed), cancel the agent
     sess.agent.onProgress = function (text) {
-      sendStreamMsg(conn, 'stream_block_start');
-      sendStreamMsg(conn, 'stream_block_delta', text);
-      sendStreamMsg(conn, 'stream_block_stop');
+      if (sess.agent.cancelled) return;
+      if (!trySend(conn, sess.agent, 'stream_block_start')) return;
+      if (!trySend(conn, sess.agent, 'stream_block_delta', text)) return;
+      trySend(conn, sess.agent, 'stream_block_stop');
     };
 
     // Run agent (req.do() is blocking-sync, so callback chain runs inline)
+    sess.agent.cancelled = false;
     sess.agent.run(query, function (err, result) {
+      if (sess.agent.cancelled) {
+        console.println('[WSServer] Agent was cancelled, skipping response');
+        sendStreamMsg(conn, 'answer_stop');
+        return;
+      }
       if (err) {
         sendStreamMsg(conn, 'answer_stop');
         sendJSON(conn, { type: 'error', session_id: sessionID, msg: 'Agent 오류: ' + err.message });
@@ -140,8 +148,13 @@ function createWSServer(mc, registry, cfg) {
   }
 
   function handleStop(conn, sessionID, userID) {
-    // JSH is synchronous, so stop is a no-op (can't cancel mid-execution)
-    console.println('[WSServer] Stop requested: ' + sessionID + ' (no-op in JSH)');
+    var sess = sessions[sessionID];
+    if (sess && sess.agent) {
+      sess.agent.cancelled = true;
+      console.println('[WSServer] Stop requested: ' + sessionID + ' — agent.cancelled=true');
+    } else {
+      console.println('[WSServer] Stop requested: ' + sessionID + ' — no active session');
+    }
     sendJSON(conn, { type: 'stop', session_id: sessionID, msg: 'stopped' });
   }
 
@@ -190,6 +203,18 @@ function createWSServer(mc, registry, cfg) {
       sendJSON(conn, { type: 'models', msg: 'No providers configured. Please set API keys in Settings.' });
     } else {
       sendJSON(conn, { type: 'models', providers: providers });
+    }
+  }
+
+  // Try to send a stream message; returns false and cancels agent on failure
+  function trySend(conn, agent, msgType, text) {
+    try {
+      sendStreamMsg(conn, msgType, text);
+      return true;
+    } catch (e) {
+      console.println('[WSServer] Send failed (connection closed?): ' + e.message);
+      agent.cancelled = true;
+      return false;
     }
   }
 

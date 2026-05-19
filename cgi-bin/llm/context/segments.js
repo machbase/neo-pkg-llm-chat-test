@@ -67,7 +67,7 @@ var SegBasicWorkflow = '## 기본 분석 (분석해줘/대시보드 만들어줘
   '5. create_dashboard_with_charts → 최소 5개 이상 차트로 대시보드 생성\n' +
   '   - filename: "테이블명/테이블명_Dashboard.dsh" (영어만!)\n' +
   '   - time_start, time_end: 4번 결과의 에폭 밀리초를 문자열로!\n' +
-  '   - Line 2~3개 + Bar 1개 + Pie 1개 + Gauge 1개\n' +
+  '   - Line 3~4개 + Bar 1~2개 (Pie, Gauge 사용 금지)\n' +
   '6. preview_dashboard → URL 확인\n' +
   '7. 데이터 분석 보고 (통계 인용, 대시보드 URL 포함)\n';
 

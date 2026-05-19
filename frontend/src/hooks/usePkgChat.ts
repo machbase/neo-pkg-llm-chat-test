@@ -300,7 +300,21 @@ export const usePkgChat = (pInitialMessages?: Message[]) => {
 
     const handleInterruptMessage = () => {
         setMessages((prev) => prev.map((m) => ({ ...m, isInterrupt: true })));
-        sendExt({ type: "stop", user_id: getCurrentUser() ?? "", session_id: sessionIdRef.current });
+        // Close WS to trigger server-side cancellation, then reconnect
+        const ws = socketRef.current;
+        if (ws) {
+            ws.onopen = null;
+            ws.onmessage = null;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.close();
+            socketRef.current = null;
+        }
+        setWsReady(false);
+        setProcessingAnswer(false);
+        processingAnswerRef.current = false;
+        // Reconnect after a short delay
+        setTimeout(() => { connect(); }, 500);
     };
 
     const handleClearSession = () => {

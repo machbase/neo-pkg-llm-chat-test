@@ -22,6 +22,47 @@ function register(registry, mc) {
   });
 
   registry.register({
+    name: 'search_documents',
+    description: 'Search documentation catalog by keyword. Returns matching document paths. Use this BEFORE get_full_document_content to find the right document.',
+    parameters: {
+      type: 'object',
+      properties: { keyword: { type: 'string', description: 'Search keyword (e.g., "PIVOT", "ROLLUP", "TQL", "chart")' } },
+      required: ['keyword'],
+    },
+    fn: function (args, cb) {
+      var keyword = argStr(args, 'keyword', '').toLowerCase();
+      if (!keyword) return cb(null, 'Error: keyword is required');
+      try {
+        var neoDir = findNeoDir();
+        if (!neoDir) return cb(null, 'Error: neo documentation directory not found');
+        var catalogPath = path.join(neoDir, 'catalog.md');
+        if (!fs.existsSync(catalogPath)) return cb(null, 'Error: catalog.md not found');
+        var lines = fs.readFileSync(catalogPath, 'utf8').split('\n');
+        var results = [];
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].indexOf('|') < 0 || lines[i].indexOf('---') >= 0) continue;
+          if (lines[i].toLowerCase().indexOf(keyword) >= 0) {
+            var cols = lines[i].split('|');
+            if (cols.length >= 4) {
+              results.push({ path: cols[1].trim(), title: cols[2].trim(), keywords: cols[3].trim() });
+            }
+          }
+        }
+        if (results.length === 0) {
+          // Fallback: return full catalog so LLM can find it manually
+          var catalog = fs.readFileSync(catalogPath, 'utf8');
+          return cb(null, 'No exact match for: ' + keyword + '\n\n아래 카탈로그에서 직접 찾아보세요:\n' + catalog);
+        }
+        var out = 'Found ' + results.length + ' document(s):\n';
+        for (var j = 0; j < results.length; j++) {
+          out += '- ' + results[j].path + ' (' + results[j].title + ') [' + results[j].keywords + ']\n';
+        }
+        cb(null, out.trim());
+      } catch (e) { cb(null, 'Error: ' + e.message); }
+    },
+  });
+
+  registry.register({
     name: 'get_full_document_content',
     description: 'Get the full content of a documentation file by its path from the catalog.',
     parameters: {
@@ -102,6 +143,8 @@ function register(registry, mc) {
 function cleanFilePath(raw) {
   return raw.replace(/^neo[\/\\]/, '');
 }
+
+
 
 function findNeoDir() {
   var cwd = process.cwd();

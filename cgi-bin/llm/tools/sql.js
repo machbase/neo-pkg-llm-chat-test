@@ -53,7 +53,7 @@ function register(registry, mc) {
   // execute_sql_query
   registry.register({
     name: 'execute_sql_query',
-    description: 'Execute a SQL query on Machbase Neo and return results. Use timeformat parameter for time formatting (not inside SQL). UPDATE statements are not allowed.',
+    description: 'Execute a SQL query on Machbase Neo and return results. Use timeformat parameter for time formatting (not inside SQL). UPDATE/DELETE/DROP statements are not allowed.',
     parameters: {
       type: 'object',
       properties: {
@@ -71,7 +71,10 @@ function register(registry, mc) {
 
       var upper = sql.toUpperCase().trim();
       if (upper.indexOf('UPDATE ') === 0 || upper.indexOf('DELETE ') === 0) {
-        return cb(null, 'Error: UPDATE/DELETE statements are not allowed');
+        return cb(null, 'Error: UPDATE/DELETE statements are not allowed.');
+      }
+      if (upper.indexOf('DROP ') === 0) {
+        return cb(null, 'Error: DROP statements are not allowed through this tool. 사용자에게 직접 SQL 콘솔에서 실행하도록 안내하세요. 예: DROP TABLE 테이블명 CASCADE;');
       }
 
       var format = argStr(args, 'format', 'csv');

@@ -94,6 +94,89 @@ function fixCharts(args, fctx) {
     }
   }
 
+  // charts: column "TIME" → "VALUE" (LLM mistake: plotting timestamps as values)
+  if (typeof args.charts === 'string' && args.charts.toUpperCase().indexOf('"TIME"') >= 0) {
+    var chartArr = jsonUnmarshal(args.charts);
+    if (Array.isArray(chartArr)) {
+      for (var ci = 0; ci < chartArr.length; ci++) {
+        if (chartArr[ci].column && chartArr[ci].column.toUpperCase() === 'TIME') {
+          chartArr[ci].column = 'VALUE';
+          console.println('  [fix] chart column TIME → VALUE');
+        }
+      }
+      args.charts = jsonMarshal(chartArr);
+    }
+  }
+
+  // charts: tag field missing → auto fill from sibling charts or knownTags
+  if (typeof args.charts === 'string' && args.charts) {
+    var tagChartList = jsonUnmarshal(args.charts);
+    if (Array.isArray(tagChartList)) {
+      // Collect known tags from charts that have them
+      var firstTag = '';
+      for (var ti = 0; ti < tagChartList.length; ti++) {
+        if (tagChartList[ti].tag) { firstTag = tagChartList[ti].tag; break; }
+      }
+      if (!firstTag && fctx.knownTags && fctx.knownTags.length > 0) firstTag = fctx.knownTags[0];
+      if (firstTag) {
+        var tagFixed = false;
+        for (var tj = 0; tj < tagChartList.length; tj++) {
+          if (!tagChartList[tj].tag) {
+            tagChartList[tj].tag = firstTag;
+            tagFixed = true;
+          }
+        }
+        if (tagFixed) {
+          args.charts = jsonMarshal(tagChartList);
+          console.println('  [fix] charts tag auto-filled: ' + firstTag);
+        }
+      }
+    }
+  }
+
+  // charts: tag = column name (NAME/TIME/VALUE) → replace with actual tag from knownTags
+  var COLUMN_NAMES = { 'NAME': true, 'TIME': true, 'VALUE': true, 'ROWNUM': true };
+  if (typeof args.charts === 'string' && args.charts && fctx.knownTags && fctx.knownTags.length > 0) {
+    var colList = jsonUnmarshal(args.charts);
+    if (Array.isArray(colList)) {
+      var colFixed = false;
+      for (var cx = 0; cx < colList.length; cx++) {
+        var tg = colList[cx].tag;
+        if (tg && COLUMN_NAMES[tg.toUpperCase()]) {
+          colList[cx].tag = fctx.knownTags[0];
+          colFixed = true;
+        }
+      }
+      if (colFixed) {
+        args.charts = jsonMarshal(colList);
+        console.println('  [fix] charts tag column name → ' + fctx.knownTags[0]);
+      }
+    }
+  }
+
+  // charts: tag case correction → match knownTags original case
+  if (typeof args.charts === 'string' && args.charts && fctx.knownTags && fctx.knownTags.length > 0) {
+    var caseList = jsonUnmarshal(args.charts);
+    if (Array.isArray(caseList)) {
+      var caseMap = {};
+      for (var ki = 0; ki < fctx.knownTags.length; ki++) {
+        caseMap[fctx.knownTags[ki].toLowerCase()] = fctx.knownTags[ki];
+      }
+      var caseFixed = false;
+      for (var ci2 = 0; ci2 < caseList.length; ci2++) {
+        var t = caseList[ci2].tag;
+        if (t && caseMap[t.toLowerCase()] && caseMap[t.toLowerCase()] !== t) {
+          caseList[ci2].tag = caseMap[t.toLowerCase()];
+          caseFixed = true;
+        }
+      }
+      if (caseFixed) {
+        args.charts = jsonMarshal(caseList);
+        console.println('  [fix] charts tag case corrected');
+      }
+    }
+  }
+
   // charts: table field missing → auto insert
   if (typeof args.charts === 'string' && args.charts && fctx.inferTableName) {
     var inferred = fctx.inferTableName();

@@ -27,6 +27,7 @@ function createAgent(llmClient, registry) {
     docCatalog: '',
     advanced: false,
     reportMode: false,
+    cancelled: false,
     fixerCtx: createFixerContext(),
     guard: createPipeline(
       [ConsecutiveFailureGuard, DashboardEarlyGuard],
@@ -174,6 +175,12 @@ function continueMessages(agent, query) {
 
 // Recursive async loop: cb(err, finalAnswer)
 function runLoop(agent, step, cb) {
+  if (agent.cancelled) {
+    console.println('[Agent] Cancelled before step ' + step);
+    console.println('============================================================');
+    return cb(null, '(중단됨)');
+  }
+
   console.println('\n[Agent] Agentic Loop step ' + step + '...');
   if (step === 0) console.println('============================================================');
 
@@ -184,6 +191,11 @@ function runLoop(agent, step, cb) {
 
   // Call LLM (async)
   agent.llm.chat(agent.messages, agent.toolDefs, function (err, resp) {
+    if (agent.cancelled) {
+      console.println('[Agent] Cancelled after LLM response at step ' + step);
+      console.println('============================================================');
+      return cb(null, '(중단됨)');
+    }
     if (err) return cb(null, 'Error: LLM call failed at step ' + step + ': ' + err.message);
 
     var msg = resp.message;
@@ -224,6 +236,10 @@ function runLoop(agent, step, cb) {
 
 // Execute tool calls one by one: doneCb(updatedStep)
 function executeToolCalls(agent, toolCalls, idx, step, doneCb) {
+  if (agent.cancelled) {
+    console.println('[Agent] Cancelled during tool execution');
+    return doneCb(step);
+  }
   if (idx >= toolCalls.length) return doneCb(step);
 
   var tc = toolCalls[idx];

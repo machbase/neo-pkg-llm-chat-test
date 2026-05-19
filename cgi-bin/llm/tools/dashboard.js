@@ -45,7 +45,7 @@ function makeBlock(table, tag, column, color, userName, aggregator) {
 
 function normalizeChartType(t) {
   if (!t) return 'Line';
-  var map = { 'line': 'Line', 'bar': 'Bar', 'scatter': 'Scatter', 'pie': 'Pie', 'gauge': 'Gauge', 'tql chart': 'Tql chart', 'liquid fill': 'Liquid fill' };
+  var map = { 'line': 'Line', 'bar': 'Bar', 'scatter': 'Scatter', 'pie': 'Line', 'gauge': 'Line', 'tql chart': 'Tql chart', 'liquid fill': 'Line' };
   return map[t.toLowerCase()] || t;
 }
 
@@ -234,8 +234,8 @@ function register(registry, mc) {
             mc.writeFile(filename, content, function (err) {
               if (err) return cb(null, 'Error: Failed to save dashboard: ' + err.message);
               var boardPath = filename.replace(/\.dsh$/i, '');
-              var dashURL = '/web/ui/board/' + boardPath;
-              cb(null, 'Dashboard created: ' + filename + ' (' + panels.length + ' charts)' + shiftedMsg + '\n[대시보드 열기](' + dashURL + ')');
+              var dashURL = mc.baseURL + '/web/ui/board/' + boardPath;
+              cb(null, 'Dashboard created: ' + filename + ' (' + panels.length + ' charts)' + shiftedMsg + '\n\n[대시보드 열기](' + dashURL + ')');
             });
           }
 
@@ -310,8 +310,8 @@ function register(registry, mc) {
           var d = dsh.dashboard || dsh;
           var panels = d.panels || [];
           var title = d.title || dsh.name || filename;
-          var dashURL = '/web/ui/board/' + filename.replace(/\.dsh$/i, '');
-          cb(null, 'Dashboard: ' + title + '\nPanels: ' + panels.length + '\n[대시보드 열기](' + dashURL + ')');
+          var dashURL = mc.baseURL + '/web/ui/board/' + filename.replace(/\.dsh$/i, '');
+          cb(null, 'Dashboard: ' + title + '\nPanels: ' + panels.length + '\n\n[대시보드 열기](' + dashURL + ')');
         } catch (e) { cb(null, 'Error: ' + e.message); }
       });
     },

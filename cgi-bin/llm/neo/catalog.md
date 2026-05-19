@@ -204,7 +204,7 @@
 | tql/chart/radar-chart.md | 레이더 차트 | CHART_RADAR,polar_coordinate,multi_axis,area_fill |
 | tql/chart/scatter-chart.md | 산점도 | CHART_SCATTER,coordinate_pairs,large_dataset,million_points |
 | tql/geomap/geomap-html-embedding.md | GeoMap HTML 임베딩 | GeoMap_embed,web_integration,WGS84 |
-| tql/geomap/geomap_guide.md | GEOMAP 지도 함수 | GEOMAP(),tile_server,coordinates,markers,shapes |
+| tql/geomap/geomap-guide.md | GEOMAP 지도 함수 | GEOMAP(),tile_server,coordinates,markers,shapes |
 | utilities/dashboard.md | 대시보드 UI | chart panel,time range,auto-refresh,TQL chart,overlay |
 | utilities/import-export.md | 데이터 임포트/익스포트 | CSV,gzip,--input,--timeformat,--compress,pipe |
 | utilities/shell/shell-access.md | SSH 셸 원격 접속 | SSH key,public key auth,fingerprint,remote command |

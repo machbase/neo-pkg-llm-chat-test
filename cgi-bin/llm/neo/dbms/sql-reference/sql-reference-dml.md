@@ -124,22 +124,22 @@ The syntax of DURATION, OLDEST, and EXCEPT cannot be used for TAG and Rollup tab
 ```sql
 -- Delete all.
 DELETE FROM devices;
- 
+
 -- Delete oldest last N rows.
 DELETE FROM devices OLDEST N ROWS;
- 
+
 -- Delete all except recent N rows.
 DELETE FROM devices EXCEPT N ROWS;
- 
+
 -- Delete all except N matches from now on.
 DELETE FROM devices EXCEPT N DAY;
- 
+
 -- Delete all data from before June 1, 2014.
 DELETE FROM devices BEFORE TO_DATE('2014-06-01', 'YYYY-MM-DD');
- 
+
 -- Delete tag data from before June 1, 2014.
 DELETE FROM tag BEFORE TO_DATE('2014-06-01', 'YYYY-MM-DD');
- 
+
 -- Delete tag rollup data from before June 1, 2014.
 DELETE FROM tag ROLLUP BEFORE TO_DATE('2014-06-01', 'YYYY-MM-DD');
 ```
@@ -180,13 +180,13 @@ A Tag or Rollup table supports the following two types of DELETE statements.
 ```sql
 -- Delete by tag name
 DELETE FROM tag WHERE tag_name = 'my_tag_2021'
- 
+
 -- Delete by tag name and tag time
 DELETE FROM tag WHERE tag_name = 'my_tag_2021' AND tag_time < TO_DATE('2021-07-01', 'YYYY-MM-DD');
 
 -- Delete rollup by tag name
 DELETE FROM tag ROLLUP WHERE tag_name = 'my_tag_2021'
- 
+
 -- Delete rollup by tag name and tag time
 DELETE FROM tag ROLLUP WHERE tag_name = 'my_tag_2021' AND tag_time < TO_DATE('2021-07-01', 'YYYY-MM-DD');
 ```
@@ -217,13 +217,13 @@ Each option is explained as follows
 ```sql
 -- Use default field delimiter(,)  field encloser (") to input data.
 LOAD DATA INFILE '/tmp/aaa.csv' INTO TABLE Sample_data ;
- 
+
 -- Create NEWTABLE with one column and enter one line as one column.
 LOAD DATA INFILE '/tmp/bbb.csv' INTO TABLE NEWTABLE AUTO BULKLOAD;
- 
+
 -- Create NEWTABLE using first line of csv as column information, and input it into table.
 LOAD DATA INFILE '/tmp/bbb.csv' INTO TABLE NEWTABLE AUTO HEADUSE;
-  
+
 -- First line is ignored and field delimiter is ; and enclosing character is specified by '.
 LOAD DATA INFILE '/tmp/ccc.csv' INTO TABLE Sample_data FIELDS TERMINATED BY ';' ENCLOSED '\''  IGNORE 1 LINES ON ERROR IGNORE;
 ```

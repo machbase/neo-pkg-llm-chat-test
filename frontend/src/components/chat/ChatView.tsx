@@ -92,6 +92,7 @@ export const ChatView = ({
 
     useEffect(() => {
         wasEmptyRef.current = messages.length === 0;
+        if (messages.length === 0) setChipChildren(null);
     }, [messages.length]);
 
     useEffect(() => {

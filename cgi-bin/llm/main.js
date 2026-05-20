@@ -1,9 +1,5 @@
 var config = require('./config/config');
 var logger = require('./logger/logger');
-var { createLLM } = require('./llm/factory');
-var { createClient } = require('./machbase/client');
-var { createRegistry } = require('./tools/registry');
-var { createAgent } = require('./agent/agent');
 
 // --- Parse CLI arguments ---
 var mode = 'cli';
@@ -37,8 +33,6 @@ if (model) cfg.model = model;
 console.println('=== neo-pkg-llm JSH ===');
 console.println('Mode: ' + mode);
 console.println('Machbase: ' + config.machbaseURL(cfg));
-console.println('Provider: ' + config.resolveProvider(cfg));
-console.println('Model: ' + config.resolveModelID(cfg));
 
 // --- Mode dispatch ---
 switch (mode) {
@@ -57,13 +51,17 @@ switch (mode) {
 
 // --- CLI Mode ---
 function runCLI(cfg, initialQuery) {
+  var { createLLM } = require('./llm/factory');
+  var { createClient } = require('./machbase/client');
+  var { createRegistry } = require('./tools/registry');
+  var { createAgent } = require('./agent/agent');
+
   var mc = createClient(cfg.machbase);
   var registry = createRegistry(mc);
   var llmClient = createLLM(cfg);
   console.println('Tools: ' + registry.toolNames().length + ' loaded');
 
   if (initialQuery) {
-    // Single query mode
     var agent = createAgent(llmClient, registry);
     agent.run(initialQuery, function (err, result) {
       console.println('\n============================================================');
@@ -73,29 +71,29 @@ function runCLI(cfg, initialQuery) {
   } else {
     console.println('Usage: machbase-neo jsh main.js --query "테이블 목록 조회"');
     console.println('  or:  machbase-neo jsh main.js --mode server --port 8884');
-    console.println('  or:  machbase-neo jsh main.js --mode ws --neo-ws-url ws://...');
   }
 }
 
-// --- Server Mode ---
+// --- Server Mode (Gateway — no LLM in this process) ---
 function runServerMode(cfg, serverPort) {
-  var mc = createClient(cfg.machbase);
-  var registry = createRegistry(mc);
-  var llmClient = createLLM(cfg);
-
   serverPort = serverPort || cfg.server.port || '8884';
-  console.println('Tools: ' + registry.toolNames().length + ' loaded');
+  console.println('Provider: ' + config.resolveProvider(cfg));
+  console.println('Model: ' + config.resolveModelID(cfg));
 
   var { runServer } = require('./server/server');
-  runServer(cfg, serverPort, llmClient, mc, registry);
+  runServer(cfg, serverPort);
 }
 
-// --- WebSocket Client Mode ---
+// --- WebSocket Client Mode (legacy, for direct Neo integration) ---
 function runWSMode(cfg, wsURL) {
   if (!wsURL) {
     console.println('Error: --neo-ws-url is required for ws mode');
     return;
   }
+
+  var { createLLM } = require('./llm/factory');
+  var { createClient } = require('./machbase/client');
+  var { createRegistry } = require('./tools/registry');
 
   var mc = createClient(cfg.machbase);
   var registry = createRegistry(mc);

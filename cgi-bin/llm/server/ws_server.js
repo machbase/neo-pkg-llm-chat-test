@@ -113,13 +113,18 @@ function createWSServer(mc, registry, cfg) {
       console.println('[WSServer] Continuing session: ' + sessionID);
     }
 
+    // Helper: check if this session was cleared while the agent was running
+    function isCleared() {
+      return sess.agent.cancelled || !sessions[sessionID];
+    }
+
     // Send answer_start
     sendStreamMsg(conn, 'answer_start');
 
     // Wire up progress reporting → send tool steps as block messages
     // If send fails (connection closed), cancel the agent
     sess.agent.onProgress = function (text) {
-      if (sess.agent.cancelled) return;
+      if (isCleared()) return;
       if (!trySend(conn, sess.agent, 'stream_block_start')) return;
       if (!trySend(conn, sess.agent, 'stream_block_delta', text)) return;
       trySend(conn, sess.agent, 'stream_block_stop');
@@ -128,7 +133,7 @@ function createWSServer(mc, registry, cfg) {
     // Run agent (req.do() is blocking-sync, so callback chain runs inline)
     sess.agent.cancelled = false;
     sess.agent.run(query, function (err, result) {
-      if (sess.agent.cancelled) {
+      if (isCleared()) {
         console.println('[WSServer] Agent was cancelled, skipping response');
         sendStreamMsg(conn, 'answer_stop');
         return;
@@ -159,11 +164,16 @@ function createWSServer(mc, registry, cfg) {
   }
 
   function handleClear(conn, sessionID, userID) {
-    if (sessions[sessionID]) {
+    var sess = sessions[sessionID];
+    if (sess && sess.agent) {
+      sess.agent.cancelled = true;
+      console.println('[WSServer] Stop before clear: ' + sessionID);
+    }
+    if (sess) {
       delete sessions[sessionID];
       console.println('[WSServer] Session cleared: ' + sessionID);
     }
-    sendJSON(conn, { type: 'stop', session_id: sessionID });
+    sendJSON(conn, { type: 'clear', session_id: sessionID });
   }
 
   function handleGetModels(conn, userID) {
@@ -255,9 +265,23 @@ function createWSServer(mc, registry, cfg) {
     }
   }
 
+  // Clean up all sessions bound to a disconnected connection
+  function cleanupConnection(conn) {
+    var keys = Object.keys(sessions);
+    for (var i = 0; i < keys.length; i++) {
+      var sess = sessions[keys[i]];
+      if (sess.conn === conn) {
+        if (sess.agent) sess.agent.cancelled = true;
+        delete sessions[keys[i]];
+        console.println('[WSServer] Session cleaned up on disconnect: ' + keys[i]);
+      }
+    }
+  }
+
   return {
     handleMessage: handleMessage,
     reapSessions: reapSessions,
+    cleanupConnection: cleanupConnection,
     sessions: sessions,
   };
 }

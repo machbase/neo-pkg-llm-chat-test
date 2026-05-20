@@ -380,15 +380,30 @@ function runServer(cfg, port, llmClient, mc, registry) {
     jsonReply(ctx, 200, { ok: true, data: { port: p } });
   });
 
-  // --- REST endpoint (test stub; frontend uses WebSocket for chat) ---
-  server.post('/api/chat', function (ctx) {
-    var body = ctx.request.body;
-    console.println('[Server] POST /api/chat: ' + JSON.stringify(body).substring(0, 200));
+  // --- Session control via HTTP (runs in separate goroutine, can interrupt blocked WS handler) ---
+  server.post('/api/sessions/stop', function (ctx) {
+    var sessionID = ctx.query('session_id');
+    console.println('[Server] POST /api/sessions/stop session=' + sessionID);
+    var sess = wsHandler.sessions[sessionID];
+    if (sess && sess.agent) {
+      sess.agent.cancelled = true;
+      jsonReply(ctx, 200, { ok: true, stopped: true });
+    } else {
+      jsonReply(ctx, 200, { ok: true, stopped: false, reason: 'no active session' });
+    }
+  });
 
-    http.get('http://' + cfg.machbase.host + ':' + cfg.machbase.port + '/db/query?q=select%201', function (resp) {
-      console.println('[Server] REST async HTTP callback fired! status=' + resp.statusCode);
-      ctx.json(http.status.OK, { ok: true, test: 'async works in REST' });
-    });
+  server.post('/api/sessions/clear', function (ctx) {
+    var sessionID = ctx.query('session_id');
+    console.println('[Server] POST /api/sessions/clear session=' + sessionID);
+    var sess = wsHandler.sessions[sessionID];
+    if (sess) {
+      if (sess.agent) sess.agent.cancelled = true;
+      delete wsHandler.sessions[sessionID];
+      jsonReply(ctx, 200, { ok: true, cleared: true });
+    } else {
+      jsonReply(ctx, 200, { ok: true, cleared: false, reason: 'no active session' });
+    }
   });
 
 
@@ -432,11 +447,27 @@ function runServer(cfg, port, llmClient, mc, registry) {
 
     socket.on('close', function () {
       console.println('[Server] WS client disconnected');
+      wsHandler.cleanupConnection(socket);
     });
   }
 
   wss.on('connection', onWSConnection);
   wss2.on('connection', onWSConnection);
+
+  // Graceful shutdown — service.stop() sends shutdown signal via jsh
+  var process3 = require('process');
+  process3.addShutdownHook(function () {
+    console.println('[Server] Shutdown hook triggered');
+    // Clean up all sessions (cancel running agents)
+    var keys = Object.keys(wsHandler.sessions);
+    for (var i = 0; i < keys.length; i++) {
+      var sess = wsHandler.sessions[keys[i]];
+      if (sess && sess.agent) sess.agent.cancelled = true;
+      delete wsHandler.sessions[keys[i]];
+    }
+    try { server.close(); } catch (e) {}
+    console.println('[Server] Shutdown complete');
+  });
 
   console.println('[Server] WebSocket server listening on :' + port);
   server.serve();

@@ -318,11 +318,23 @@ export const usePkgChat = (pInitialMessages?: Message[]) => {
     };
 
     const handleClearSession = () => {
-        sendExt({ type: "clear", user_id: getCurrentUser() ?? "", session_id: sessionIdRef.current });
+        // Close WS to trigger server-side cancellation (same as interrupt),
+        // then reset session and reconnect
+        const ws = socketRef.current;
+        if (ws) {
+            ws.onopen = null;
+            ws.onmessage = null;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.close();
+            socketRef.current = null;
+        }
+        setWsReady(false);
         sessionIdRef.current = generateSessionId();
         setMessages([]);
         setProcessingAnswer(false);
         processingAnswerRef.current = false;
+        setTimeout(() => { connect(); }, 500);
     };
 
     const isConnected = wsReady && socketRef.current?.readyState === WebSocket.OPEN;

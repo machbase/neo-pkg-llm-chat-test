@@ -12,7 +12,7 @@ var http2 = require('@jsh/http');
 var config = require('../config/config');
 
 var SESSION_TTL = 30 * 60 * 1000; // 30 min
-var WORKER_PREFIX = 'neo-pkg-llm-w-';
+var WORKER_PREFIX = 'llm-w-';
 
 function createGateway(cfg, serverPort) {
   var routes = {};       // sessionID → { browserConn, workerConn, serviceName, ... }

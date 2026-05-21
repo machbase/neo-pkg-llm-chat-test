@@ -12,7 +12,7 @@ var ROOT = process.argv[1].slice(0, process.argv[1].lastIndexOf('/cgi-bin/') + '
 var LLM_DIR = path.join(ROOT, 'llm');
 var WORKERS_DIR = path.join(LLM_DIR, 'workers');
 var WORKER_SCRIPT = path.join(LLM_DIR, 'worker.js');
-var WORKER_PREFIX = 'neo-pkg-llm-w-';
+var WORKER_PREFIX = 'llm-w-';
 
 function reply(data) {
   process.stdout.write('Content-Type: application/json\r\n');

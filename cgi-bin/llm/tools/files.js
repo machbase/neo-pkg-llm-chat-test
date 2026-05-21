@@ -13,7 +13,11 @@ function register(registry, mc) {
       var folder = argStr(args, 'folder_name', '');
       if (!folder) return cb(null, 'Error: folder_name is required');
       mc.createFolder(folder, function (err) {
-        if (err) return cb(null, 'Error: ' + err.message);
+        if (err) {
+          var msg = err.message || '';
+          if (/already exists|Cannot create/i.test(msg)) return cb(null, 'Folder already exists: ' + folder);
+          return cb(null, 'Error: ' + msg);
+        }
         cb(null, 'Folder created: ' + folder);
       });
     },

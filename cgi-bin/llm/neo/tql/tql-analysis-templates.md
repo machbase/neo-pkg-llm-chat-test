@@ -166,26 +166,6 @@ CHART(
 )
 ```
 
-### 1-6. 로그 가격 (수익률 분석)
-용도: 로그 스케일로 가격을 변환하여 장기 수익률 추세를 분석합니다.
-```tql
-SQL(`SELECT ROLLUP({UNIT}, 1, TIME), AVG(VALUE) FROM {TABLE} WHERE NAME = '{TAG}' AND TIME BETWEEN TO_DATE('{TIME_START}') AND TO_DATE('{TIME_END}') GROUP BY ROLLUP({UNIT}, 1, TIME) ORDER BY ROLLUP({UNIT}, 1, TIME)`)
-MAPVALUE(1, log(value(1)))
-SCRIPT({
-    $.yield([$.values[0], $.values[1]])
-})
-CHART(
-    tz('Asia/Seoul'),
-    chartOption({
-        title: { text: "{TAG} 로그 가격", left: "center", textStyle: { fontSize: 14 } },
-        xAxis: { type: "time" },
-        yAxis: { type: "value", name: "Log Price" },
-        dataZoom: [{ type: "slider" }, { type: "inside" }],
-        series: [{ type: "line", data: column(0) }]
-    })
-)
-```
-
 ---
 
 ## 2. 센서/진동 데이터 (베어링, 모터, 가속도계 등)
@@ -307,25 +287,6 @@ CHART(
         dataZoom: [{ type: "slider" }, { type: "inside" }],
         series: [{ type: "bar", data: column(0) }]
     })
-)
-```
-
-### 2-7. 에너지 스펙트럼 (시간-주파수 3D)
-용도: 시간에 따른 주파수 변화를 3D로 시각화합니다. 주파수 성분이 시간에 따라 어떻게 변하는지 확인합니다.
-주의: 고빈도 진동 데이터에 적합. roundTime으로 시간 윈도우를 분할합니다.
-```tql
-SQL_SELECT('time', 'value', from('{TABLE}', '{TAG}'), between('last-10s', 'last'))
-MAPKEY( roundTime(value(0), '500ms') )
-GROUPBYKEY()
-FFT(minHz(0), maxHz(100))
-FLATTEN()
-PUSHKEY('fft')
-CHART_BAR3D(
-    title('{TAG} 3D Energy Spectrum'),
-    xAxis(0, 'time', 'time'),
-    yAxis(1, 'Hz'),
-    zAxis(2, 'Amp'),
-    size('600px', '600px'), visualMap(0, 1.5)
 )
 ```
 

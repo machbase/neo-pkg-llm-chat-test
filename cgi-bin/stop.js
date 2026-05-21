@@ -8,7 +8,7 @@ const fs = require('fs');
 const service = require('service');
 
 const DEFAULT_SERVICE_NAME = 'neo-pkg-llm';
-const WORKER_PREFIX = 'neo-pkg-llm-w-';
+const WORKER_PREFIX = 'llm-w-';
 const ROOT = path.resolve(path.dirname(process.argv[1]));
 const WORKERS_DIR = path.join(ROOT, 'llm', 'workers');
 

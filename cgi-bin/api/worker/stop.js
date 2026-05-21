@@ -32,17 +32,18 @@ if (method !== 'POST') {
     reply({ ok: false, reason: 'name required' });
   } else {
     service.stop(svcName, function (err) {
-      if (err) {
-        var msg = err.message || String(err);
-        if (/not\s*found|not\s*running/i.test(msg)) {
-          reply({ ok: true, name: svcName, alreadyStopped: true });
-        } else {
-          reply({ ok: false, reason: msg });
-        }
-        return;
-      }
+      // stop 실패해도 uninstall은 항상 시도
       service.uninstall(svcName, function () {
-        reply({ ok: true, name: svcName });
+        if (err) {
+          var msg = err.message || String(err);
+          if (/not\s*found|not\s*running/i.test(msg)) {
+            reply({ ok: true, name: svcName, alreadyStopped: true });
+          } else {
+            reply({ ok: false, reason: msg });
+          }
+        } else {
+          reply({ ok: true, name: svcName });
+        }
       });
     });
   }

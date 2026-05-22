@@ -38,9 +38,10 @@ function rePrompt(agent, msg, hint) {
   agent.messages.push({ role: 'user', content: hint, toolCalls: [] });
 
   try {
-    var resp = agent.llm.chat(msgs, agent.toolDefs);
+    var resp = agent.llm.chatSync(msgs, agent.toolDefs);
     return resp.message;
   } catch (e) {
+    console.println('  [guard] rePrompt failed: ' + (e.message || String(e)));
     return msg;
   }
 }
@@ -51,9 +52,10 @@ function rePromptNoToolCalls(agent, msg, hint) {
   agent.messages.push({ role: 'user', content: hint, toolCalls: [] });
 
   try {
-    var resp = agent.llm.chat(agent.messages, agent.toolDefs);
+    var resp = agent.llm.chatSync(agent.messages, agent.toolDefs);
     return resp.message;
   } catch (e) {
+    console.println('  [guard] rePromptNoToolCalls failed: ' + (e.message || String(e)));
     return msg;
   }
 }

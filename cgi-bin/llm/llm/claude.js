@@ -13,6 +13,9 @@ function createClaudeClient(apiKey, model) {
     chat: function (messages, toolDefs, cb) {
       claudeChat(this, messages, toolDefs, cb);
     },
+    chatSync: function (messages, toolDefs) {
+      return claudeChatSync(this, messages, toolDefs);
+    },
   };
 }
 
@@ -65,6 +68,51 @@ function claudeChat(client, messages, toolDefs, cb) {
   } catch (e) {
     cb(new Error('[Claude] Request failed: ' + e.message));
   }
+}
+
+function claudeChatSync(client, messages, toolDefs) {
+  var systemPrompt = extractSystem(messages);
+  var claudeMsgs = messagesToClaude(messages);
+  var claudeTools = toolDefsToClaude(toolDefs);
+
+  var reqBody = {
+    model: client.model,
+    max_tokens: 4096,
+    system: buildSystemBlocks(systemPrompt),
+    messages: claudeMsgs,
+    tools: claudeTools,
+  };
+
+  var body = JSON.stringify(reqBody);
+  var req = http2.NewRequest('POST', BASE_URL + '/v1/messages');
+  req.header.set('Content-Type', 'application/json');
+  req.header.set('x-api-key', client.apiKey);
+  req.header.set('anthropic-version', '2023-06-01');
+  req.header.set('anthropic-beta', 'prompt-caching-2024-07-31');
+  req.writeString(body);
+
+  console.println('[Claude] Sending sync request (' + body.length + ' bytes)...');
+  var resp = _client.do(req);
+  console.println('[Claude] Response: ' + resp.statusCode);
+
+  if (!resp.ok) {
+    var errBody = '';
+    try { errBody = resp.string(); } catch (e) { errBody = String(resp.statusCode); }
+    throw new Error('[Claude] API error (HTTP ' + resp.statusCode + '): ' + errBody);
+  }
+
+  var claudeResp = resp.json();
+  if (claudeResp.usage) {
+    var u = claudeResp.usage;
+    var cached = u.cache_read_input_tokens || 0;
+    var created = u.cache_creation_input_tokens || 0;
+    var input = u.input_tokens || 0;
+    if (cached > 0 || created > 0) {
+      console.println('[Claude] Cache: read=' + cached + ' created=' + created + ' input=' + input);
+    }
+  }
+  var msg = parseClaudeResponse(claudeResp);
+  return createChatResponse(client.model, msg, true);
 }
 
 function extractSystem(messages) {

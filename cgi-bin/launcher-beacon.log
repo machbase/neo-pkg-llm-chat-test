@@ -1,4 +1,4 @@
-[2026-05-21T07:51:06.788Z] STACK: GoError: http.Listener.Listen: listen tcp 0.0.0.0:8884: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+[2026-05-22T00:39:46.406Z] STACK: GoError: http.Listener.Listen: listen tcp 0.0.0.0:8884: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 	at reflect.methodValueCall (native)
 	at serve (/lib/http.js:357:23(7))
 	at runServer (/work/public/neo-pkg-llm-chat/cgi-bin/llm/server/server.js:372:15(310))

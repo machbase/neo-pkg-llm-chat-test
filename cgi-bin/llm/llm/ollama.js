@@ -9,6 +9,7 @@ function createOllamaClient(baseURL, model) {
     baseURL: baseURL || 'http://127.0.0.1:11434', model: model || DEFAULT_MODEL, type: 'ollama',
     temperature: 0, numPredict: 4096, numCtx: 40960, numGPU: 36, numKeep: 6100,
     chat: function (messages, toolDefs, cb) { ollamaChat(this, messages, toolDefs, cb); },
+    chatSync: function (messages, toolDefs) { return ollamaChatSync(this, messages, toolDefs); },
     setNumKeep: function (skillName) {
       var map = { AdvancedAnalysis: 6900, BasicAnalysis: 6100, Report: 5500, DocLookup: 5500 };
       this.numKeep = map[skillName] || 6100;
@@ -38,6 +39,27 @@ function ollamaChat(client, messages, toolDefs, cb) {
     if (ollamaResp.error) return cb(new Error('[Ollama] ' + ollamaResp.error));
     cb(null, createChatResponse(client.model, parseOllamaResponse(ollamaResp), true));
   } catch (e) { cb(new Error('[Ollama] Request failed: ' + e.message)); }
+}
+
+function ollamaChatSync(client, messages, toolDefs) {
+  var reqBody = {
+    model: client.model, messages: messagesToOllama(messages),
+    tools: toolDefs && toolDefs.length > 0 ? toolDefs : undefined, stream: false,
+    options: { temperature: client.temperature, num_predict: client.numPredict, num_ctx: client.numCtx, num_gpu: client.numGPU, num_keep: client.numKeep },
+  };
+  var body = JSON.stringify(reqBody);
+
+  var req = http2.NewRequest('POST', client.baseURL + '/api/chat');
+  req.header.set('Content-Type', 'application/json');
+  req.writeString(body);
+  var resp = _client.do(req);
+  if (!resp.ok) {
+    var errBody = ''; try { errBody = resp.string(); } catch (e) {}
+    throw new Error('[Ollama] API error (HTTP ' + resp.statusCode + '): ' + errBody);
+  }
+  var ollamaResp = resp.json();
+  if (ollamaResp.error) throw new Error('[Ollama] ' + ollamaResp.error);
+  return createChatResponse(client.model, parseOllamaResponse(ollamaResp), true);
 }
 
 function messagesToOllama(messages) {

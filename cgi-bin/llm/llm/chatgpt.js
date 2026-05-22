@@ -9,6 +9,7 @@ function createChatGPTClient(apiKey, model) {
   return {
     apiKey: apiKey, model: model || DEFAULT_MODEL, type: 'chatgpt',
     chat: function (messages, toolDefs, cb) { chatgptChat(this, messages, toolDefs, cb); },
+    chatSync: function (messages, toolDefs) { return chatgptChatSync(this, messages, toolDefs); },
   };
 }
 
@@ -33,6 +34,27 @@ function chatgptChat(client, messages, toolDefs, cb) {
     var msg = parseOpenAIResponse(openaiResp);
     cb(null, createChatResponse(client.model, msg, true));
   } catch (e) { cb(new Error('[ChatGPT] Request failed: ' + e.message)); }
+}
+
+function chatgptChatSync(client, messages, toolDefs) {
+  var reqBody = { model: client.model, messages: messagesToOpenAI(messages), tools: toolDefs && toolDefs.length > 0 ? toolDefs : undefined };
+  var body = JSON.stringify(reqBody);
+
+  var req = http2.NewRequest('POST', BASE_URL + '/v1/chat/completions');
+  req.header.set('Content-Type', 'application/json');
+  req.header.set('Authorization', 'Bearer ' + client.apiKey);
+  req.writeString(body);
+
+  var resp = _client.do(req);
+  if (!resp.ok) {
+    var errBody = ''; try { errBody = resp.string(); } catch (e) {}
+    if (resp.statusCode === 429) throw new Error('[ChatGPT] API 사용량 한도 초과 (HTTP 429)');
+    throw new Error('[ChatGPT] API error (HTTP ' + resp.statusCode + '): ' + errBody);
+  }
+  var openaiResp = resp.json();
+  if (openaiResp.error) throw new Error('[ChatGPT] ' + openaiResp.error.message);
+  var msg = parseOpenAIResponse(openaiResp);
+  return createChatResponse(client.model, msg, true);
 }
 
 function messagesToOpenAI(messages) {

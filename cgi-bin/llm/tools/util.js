@@ -136,7 +136,9 @@ function register(registry, mc) {
                     }
                   } catch (e) { /* ignore */ }
                 }
-                cb(null, JSON.stringify(info, null, 2));
+                var result = JSON.stringify(info, null, 2);
+                result += '\n\n[지시] 위 정보를 **모두** 사용자에게 정리하여 보여주세요. 패키지 정보, 서비스 상태, DB 연결, 서버 설정(config), 스토리지(storage), 세션(sessions), 테이블 수를 빠짐없이 포함하세요.';
+                cb(null, result);
               });
             });
           });
